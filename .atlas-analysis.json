@@ -1,0 +1,161 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "OpenSteer",
+  "projectDescription": "Open-source browser automation SDK with robust selectors and deterministic replay.",
+  "theme": "palm",
+  "primaryColor": "#2563eb",
+  "lightColor": "#3b82f6",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/selectors-and-replay",
+              "concepts/snapshot-modes",
+              "concepts/local-vs-cloud"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/browser-automation",
+              "guides/data-extraction",
+              "guides/ai-agents",
+              "guides/cua-agent",
+              "guides/cloud-integration",
+              "guides/skills"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/opensteer",
+              "api/lifecycle",
+              "api/navigation"
+            ]
+          },
+          {
+            "group": "Actions",
+            "pages": [
+              "api/actions/click",
+              "api/actions/input",
+              "api/actions/hover",
+              "api/actions/select",
+              "api/actions/scroll",
+              "api/actions/file-upload"
+            ]
+          },
+          {
+            "group": "Extraction",
+            "pages": [
+              "api/extraction/extract",
+              "api/extraction/snapshot",
+              "api/extraction/schemas"
+            ]
+          },
+          {
+            "group": "Agent",
+            "pages": [
+              "api/agent/overview",
+              "api/agent/execute",
+              "api/agent/configuration"
+            ]
+          },
+          {
+            "group": "Cloud",
+            "pages": [
+              "api/cloud/configuration",
+              "api/cloud/sessions"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utilities/cookies",
+              "api/utilities/tabs",
+              "api/utilities/state"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/overview",
+              "cli/open",
+              "cli/snapshot",
+              "cli/click",
+              "cli/input",
+              "cli/extract",
+              "cli/close",
+              "cli/skills"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Resources",
+        "groups": [
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-usage",
+              "examples/data-extraction",
+              "examples/form-filling",
+              "examples/ai-integration"
+            ]
+          },
+          {
+            "group": "Community",
+            "pages": [
+              "contributing",
+              "changelog",
+              "faq"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Descriptor-aware selectors with automatic persistence for deterministic replay",
+    "Unified API for local and cloud browser automation execution",
+    "Structured data extraction with typed schemas",
+    "Computer Use Agent (CUA) support for autonomous workflows",
+    "Built-in HTML cleaning and snapshot optimization",
+    "CLI and SDK interfaces for flexible integration"
+  ],
+  "publicApiSurface": [
+    "Opensteer class constructor and configuration",
+    "launch() / close() lifecycle methods",
+    "goto() / reload() / goBack() / goForward() navigation",
+    "click() / input() / hover() / select() / scroll() action methods",
+    "snapshot() / extract() / extractFromPlan() extraction methods",
+    "agent() / agent.execute() CUA methods",
+    "uploadFile() / screenshot() / state() utility methods",
+    "getTabs() / getTab() / switchTab() / openTab() / closeTab() tab management",
+    "exportCookies() / importCookies() cookie management",
+    "getCloudSessionId() / getCloudSessionUrl() cloud helpers",
+    "CLI commands: open, snapshot, click, input, extract, close, skills"
+  ]
+}

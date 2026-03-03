@@ -1,0 +1,100 @@
+---
+title: opensteer snapshot
+description: Capture a snapshot of the current page
+---
+
+Captures a snapshot of the current page with various modes for different use cases.
+
+## Syntax
+
+```bash
+opensteer snapshot [mode] [options]
+```
+
+## Arguments
+
+- **`mode`**: Snapshot mode (optional, default: `action`)
+  - `action`: Elements suitable for actions (clicks, inputs)
+  - `extraction`: Elements suitable for data extraction
+  - `clickable`: All clickable elements
+  - `scrollable`: All scrollable elements
+  - `full`: Complete page snapshot with all elements
+
+## Options
+
+- `--session <id>`: Session ID to use
+- `--mode <mode>`: Alternative way to specify the mode
+
+## Examples
+
+### Default Snapshot (Action Mode)
+
+```bash
+opensteer snapshot --session agent-a
+```
+
+### Extraction Mode
+
+```bash
+opensteer snapshot extraction --session agent-a
+```
+
+### Clickable Elements
+
+```bash
+opensteer snapshot clickable --session agent-a
+```
+
+### Scrollable Elements
+
+```bash
+opensteer snapshot scrollable --session agent-a
+```
+
+### Full Snapshot
+
+```bash
+opensteer snapshot full --session agent-a
+```
+
+### Using --mode Flag
+
+```bash
+opensteer snapshot --mode extraction --session agent-a
+```
+
+## Response
+
+Returns a snapshot of the page with indexed elements:
+
+```json
+{
+  "ok": true,
+  "snapshot": "...",
+  "elements": [
+    {
+      "index": 0,
+      "tag": "button",
+      "text": "Submit",
+      "attributes": { ... }
+    }
+  ]
+}
+```
+
+## Use Cases
+
+### Action Mode
+Optimized for interactive elements that can be clicked, typed into, or otherwise interacted with. Use this when you need to perform actions on the page.
+
+### Extraction Mode
+Optimized for elements containing meaningful data. Use this when scraping or extracting information from the page.
+
+### Clickable Mode
+Shows all clickable elements including links, buttons, and interactive components.
+
+### Scrollable Mode
+Shows all scrollable containers on the page.
+
+### Full Mode
+Captures all elements on the page, providing the most comprehensive snapshot.

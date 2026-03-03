@@ -1,0 +1,107 @@
+---
+title: opensteer close
+description: Close browser session and daemon
+---
+
+Closes the browser and stops the daemon for a specific session or all sessions.
+
+## Syntax
+
+```bash
+opensteer close [options]
+```
+
+## Options
+
+- `--session <id>`: Session ID to close
+- `--all`: Close all active sessions
+
+## Examples
+
+### Close Specific Session
+
+```bash
+opensteer close --session agent-a
+```
+
+### Close Using Environment Variable
+
+```bash
+export OPENSTEER_SESSION=agent-a
+opensteer close
+```
+
+### Close All Sessions
+
+```bash
+opensteer close --all
+```
+
+### List Sessions Before Closing
+
+```bash
+# First, list all active sessions
+opensteer sessions
+
+# Then close a specific one
+opensteer close --session my-session
+```
+
+## Response
+
+### Single Session
+
+```json
+{
+  "ok": true
+}
+```
+
+### All Sessions
+
+```json
+{
+  "ok": true,
+  "closed": [
+    { "name": "session-1", "pid": 12345 },
+    { "name": "session-2", "pid": 12346 }
+  ]
+}
+```
+
+## Behavior
+
+- Closes the browser instance for the session
+- Stops the daemon process
+- Cleans up temporary files (socket, PID file)
+- With `--all`, closes every active session and daemon
+
+## Related Commands
+
+- `opensteer sessions`: List all active sessions
+- `opensteer status`: Check session status
+
+## Session Cleanup
+
+When you close a session:
+
+1. The browser window is closed
+2. The daemon process is terminated
+3. Socket files are removed from `/tmp/`
+4. PID files are cleaned up
+5. Session bindings are preserved (for `OPENSTEER_CLIENT_ID`)
+
+## Error Handling
+
+If a session fails to close properly, you may need to:
+
+```bash
+# List sessions to find the PID
+opensteer sessions
+
+# Manually kill the process if needed
+kill <pid>
+
+# Try closing again
+opensteer close --session <session-id>
+```

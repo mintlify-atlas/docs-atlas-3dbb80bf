@@ -1,0 +1,218 @@
+---
+title: Lifecycle methods
+description: Browser lifecycle management with launch and close methods
+icon: rotate
+---
+
+## `launch()`
+
+Launch a new browser instance. In local mode, starts a Playwright Chromium instance. In cloud mode, creates a session and connects via CDP.
+
+```ts
+await opensteer.launch(options?: LaunchOptions)
+```
+
+### Parameters
+
+<ParamField path="headless" type="boolean">
+  Run browser in headless mode. Overrides config value if specified.
+</ParamField>
+
+<ParamField path="executablePath" type="string">
+  Path to browser executable. Overrides config value if specified.
+</ParamField>
+
+<ParamField path="slowMo" type="number">
+  Slow down operations by specified milliseconds. Useful for debugging.
+</ParamField>
+
+<ParamField path="context" type="BrowserContextOptions">
+  Playwright BrowserContext options like viewport, locale, timezone, etc.
+</ParamField>
+
+<ParamField path="connectUrl" type="string">
+  Connect to a running browser via CDP. Example: `"http://localhost:9222"`
+</ParamField>
+
+<ParamField path="channel" type="string">
+  Browser channel: `"chrome"`, `"chrome-beta"`, or `"msedge"`
+</ParamField>
+
+<ParamField path="profileDir" type="string">
+  Browser profile directory. Preserves cookies, extensions, and sessions.
+</ParamField>
+
+<ParamField path="timeout" type="number">
+  Connection timeout in milliseconds. Default: 30000 (30 seconds)
+</ParamField>
+
+### Examples
+
+#### Basic launch
+
+```ts
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({ name: 'my-scraper' })
+await opensteer.launch()
+
+try {
+  await opensteer.goto('https://example.com')
+  // ... perform actions
+} finally {
+  await opensteer.close()
+}
+```
+
+#### Headless mode
+
+```ts
+await opensteer.launch({ headless: true })
+```
+
+#### Custom viewport
+
+```ts
+await opensteer.launch({
+  context: {
+    viewport: { width: 1920, height: 1080 },
+    deviceScaleFactor: 2
+  }
+})
+```
+
+#### Connect to existing browser
+
+```ts
+// Start Chrome with remote debugging:
+// google-chrome --remote-debugging-port=9222
+
+await opensteer.launch({
+  connectUrl: 'http://localhost:9222'
+})
+```
+
+#### Cloud mode launch
+
+```ts
+const opensteer = new Opensteer({
+  name: 'my-scraper',
+  cloud: { apiKey: process.env.OPENSTEER_API_KEY }
+})
+
+await opensteer.launch()
+
+// Get cloud session details
+const sessionId = opensteer.getCloudSessionId()
+const sessionUrl = opensteer.getCloudSessionUrl()
+console.log('Session:', sessionId)
+console.log('View at:', sessionUrl)
+```
+
+## `close()`
+
+Close the browser and release all resources. In cloud mode, also closes the cloud session and action WebSocket.
+
+```ts
+await opensteer.close()
+```
+
+### Examples
+
+#### Always close in finally block
+
+```ts
+const opensteer = new Opensteer({ name: 'my-scraper' })
+
+try {
+  await opensteer.launch()
+  await opensteer.goto('https://example.com')
+  const data = await opensteer.extract({
+    schema: { title: 'string' }
+  })
+  console.log(data)
+} finally {
+  await opensteer.close()
+}
+```
+
+#### Multiple sessions
+
+```ts
+const sessions = []
+
+try {
+  for (let i = 0; i < 3; i++) {
+    const opensteer = new Opensteer({ name: `scraper-${i}` })
+    await opensteer.launch()
+    sessions.push(opensteer)
+  }
+  
+  // Use sessions concurrently
+  await Promise.all(
+    sessions.map(s => s.goto('https://example.com'))
+  )
+} finally {
+  // Close all sessions
+  await Promise.all(
+    sessions.map(s => s.close())
+  )
+}
+```
+
+## Lifecycle best practices
+
+<Tip>
+  Always wrap `launch()` and `close()` in try/finally blocks to ensure cleanup, even if errors occur.
+</Tip>
+
+<Warning>
+  Calling methods before `launch()` will throw an error. Always launch before using browser methods.
+</Warning>
+
+<Info>
+  In cloud mode, `close()` terminates the cloud session immediately. Any pending actions will be cancelled.
+</Info>
+
+## Error handling
+
+```ts
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({ name: 'my-scraper' })
+
+try {
+  await opensteer.launch({ timeout: 10000 })
+  
+  await opensteer.goto('https://example.com')
+  await opensteer.click({ description: 'submit button' })
+  
+} catch (error) {
+  console.error('Browser automation failed:', error)
+  
+  if (error.message.includes('timeout')) {
+    console.error('Failed to connect to browser')
+  }
+  
+} finally {
+  // Always cleanup
+  await opensteer.close()
+}
+```
+
+## Local vs cloud behavior
+
+| Feature | Local Mode | Cloud Mode |
+|---------|------------|------------|
+| Browser process | Runs on local machine | Runs in cloud infrastructure |
+| Launch time | 2-5 seconds | 5-10 seconds |
+| Session persistence | Until close() | Until close() or timeout |
+| Browser profiles | Supported via profileDir | Not supported |
+| CDP connection | Optional via connectUrl | Automatic |
+| Cleanup on close | Kills browser process | Terminates cloud session |
+
+## Related methods
+
+- [Opensteer constructor](/api/opensteer) - Initial configuration
+- [Cloud sessions](/api/cloud/sessions) - Cloud session management
+- [goto()](/api/navigation#goto) - Navigate after launch

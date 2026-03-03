@@ -1,0 +1,87 @@
+---
+title: opensteer click
+description: Click an element on the page
+---
+
+Clicks an element on the page using element index, CSS selector, or description.
+
+## Syntax
+
+```bash
+opensteer click [element] [options]
+```
+
+## Arguments
+
+- **`element`**: Element index from snapshot (optional if using `--element`, `--selector`, or `--description`)
+
+## Options
+
+- `--session <id>`: Session ID to use
+- `--element <N>`: Target element by index number
+- `--selector <css>`: Target element by CSS selector
+- `--description <text>`: Target element by description (uses cached selector or searches)
+
+## Examples
+
+### Click by Element Index
+
+```bash
+# First get a snapshot to see element indices
+opensteer snapshot --session agent-a
+
+# Click element at index 3
+opensteer click 3 --session agent-a
+```
+
+### Click by Element Flag
+
+```bash
+opensteer click --element 5 --session agent-a
+```
+
+### Click by CSS Selector
+
+```bash
+opensteer click --selector "button.submit" --session agent-a
+```
+
+### Click by Description
+
+```bash
+opensteer click --description "Add to cart button" --session agent-a
+```
+
+### Using Environment Variable for Session
+
+```bash
+export OPENSTEER_SESSION=agent-a
+opensteer click 3
+```
+
+## Response
+
+```json
+{
+  "ok": true
+}
+```
+
+## Related Commands
+
+- `dblclick [element]`: Double-click an element
+- `rightclick [element]`: Right-click an element
+- `hover [element]`: Hover over an element
+
+## Element Targeting
+
+You can target elements in three ways:
+
+1. **By Index**: Use the element number from a `snapshot` result
+2. **By Selector**: Use a CSS selector to target the element
+3. **By Description**: Use a human-readable description (leverages selector caching)
+
+The `--description` option is particularly useful for persistent automation:
+- First use saves the selector in the cache under the given description
+- Subsequent uses retrieve the cached selector for faster execution
+- Namespaced by the `--name` flag or session ID

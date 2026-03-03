@@ -1,0 +1,319 @@
+---
+title: snapshot()
+description: Capture a cleaned HTML snapshot of the current page with element counters for extraction and action planning
+---
+
+## Signature
+
+```typescript
+snapshot(options?: SnapshotOptions): Promise<string>
+```
+
+Return a cleaned HTML snapshot of the current page. Elements are annotated with `c="..."` counter attributes that can be referenced in subsequent actions or extractions. Counters are reassigned on each snapshot and synced to the live DOM.
+
+## Parameters
+
+<ParamField path="options" type="SnapshotOptions">
+  Optional snapshot configuration
+
+  <Expandable title="properties">
+    <ParamField path="mode" type="SnapshotMode" default="action">
+      Snapshot mode controlling which elements are included and how they're annotated.
+
+      - `action` - Balanced context for action planning (clickable elements, forms, etc.)
+      - `extraction` - Richer content for data extraction (includes more text nodes, tables, lists)
+      - `clickable` - Only clickable elements (links, buttons)
+      - `scrollable` - Only scrollable containers
+      - `full` - Broad HTML with scripts, styles, and noise removed
+    </ParamField>
+
+    <ParamField path="withCounters" type="boolean" default="true">
+      Whether to add `c="..."` counter attributes to elements. Counters enable element referencing in actions and extractions.
+    </ParamField>
+
+    <ParamField path="markInteractive" type="boolean" default="false">
+      Whether to add visual markers to interactive elements in the live page. Useful for debugging element detection.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="html" type="string">
+  Cleaned HTML string with counter annotations. Scripts, styles, and irrelevant elements are removed. Element counters are added as `c="N"` attributes.
+</ResponseField>
+
+## Examples
+
+### Basic snapshot for extraction
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+await opensteer.goto('https://example.com')
+
+const html = await opensteer.snapshot({ mode: 'extraction' })
+
+console.log(html)
+// <html>
+//   <body>
+//     <h1 c="1">Welcome</h1>
+//     <p c="2">This is example content</p>
+//     <a href="/about" c="3">Learn more</a>
+//   </body>
+// </html>
+```
+
+### Snapshot for action planning
+
+```typescript
+// Default mode includes interactive elements
+const actionHtml = await opensteer.snapshot()
+// or explicitly:
+const actionHtml = await opensteer.snapshot({ mode: 'action' })
+
+// Use counters to reference elements
+await opensteer.click({ element: 3 })
+```
+
+### Clickable elements only
+
+```typescript
+const clickableHtml = await opensteer.snapshot({ mode: 'clickable' })
+
+// Result includes only links, buttons, and clickable elements
+// <button c="1">Submit</button>
+// <a href="/next" c="2">Next</a>
+```
+
+### Full page snapshot
+
+```typescript
+const fullHtml = await opensteer.snapshot({ mode: 'full' })
+
+// Includes all content, tables, lists, divs, spans, etc.
+// Useful for comprehensive content extraction
+```
+
+### Snapshot without counters
+
+```typescript
+const rawHtml = await opensteer.snapshot({ withCounters: false })
+
+// Clean HTML without c="..." attributes
+// Useful for content analysis or debugging
+```
+
+### Debug interactive elements
+
+```typescript
+// Add visual markers to see what elements are detected
+await opensteer.snapshot({ 
+  mode: 'action',
+  markInteractive: true 
+})
+
+// Interactive elements in the browser will be visually highlighted
+// Take a screenshot to see the markers
+const screenshot = await opensteer.screenshot()
+```
+
+### Using snapshot with AI extraction
+
+```typescript
+const html = await opensteer.snapshot({ 
+  mode: 'extraction',
+  withCounters: true 
+})
+
+// Pass to AI for analysis
+const analysis = await analyzeWithAI(html)
+
+// Use counter references from AI response
+await opensteer.extract({
+  schema: {
+    title: { element: analysis.titleCounter },
+    price: { element: analysis.priceCounter },
+  },
+})
+```
+
+### Snapshot for debugging
+
+```typescript
+import fs from 'fs'
+
+const html = await opensteer.snapshot({ mode: 'full' })
+fs.writeFileSync('debug-snapshot.html', html, 'utf-8')
+
+// Open debug-snapshot.html to inspect cleaned page structure
+```
+
+## Snapshot Modes
+
+<ParamField path="mode" type="SnapshotMode">
+  The mode controls which elements are included in the snapshot:
+
+  <Expandable title="mode options">
+    <ResponseField name="action" type="string">
+      **Default mode.** Includes interactive elements (buttons, links, inputs) and structural content. Optimized for action planning and element selection.
+
+      **Includes:**
+      - Buttons, links, form inputs
+      - Headings, paragraphs
+      - Interactive containers
+      - Navigation elements
+
+      **Use for:**
+      - Click, input, select actions
+      - General page interaction
+      - Balanced content + interactivity
+    </ResponseField>
+
+    <ResponseField name="extraction" type="string">
+      Richer content snapshot optimized for data extraction. Includes more text nodes, tables, lists, and structured content.
+
+      **Includes:**
+      - All content from `action` mode
+      - Tables, lists, definition lists
+      - More text-heavy elements
+      - Data-rich structures
+
+      **Use for:**
+      - Structured data extraction
+      - Table scraping
+      - Content analysis
+      - Schema-based extraction
+    </ResponseField>
+
+    <ResponseField name="clickable" type="string">
+      Minimal snapshot with only clickable elements.
+
+      **Includes:**
+      - Buttons (`<button>`, `[role="button"]`)
+      - Links (`<a>` with `href`)
+      - Clickable inputs (checkboxes, radio)
+
+      **Use for:**
+      - Navigation tasks
+      - Link discovery
+      - Reduced HTML size
+    </ResponseField>
+
+    <ResponseField name="scrollable" type="string">
+      Only scrollable containers.
+
+      **Includes:**
+      - Elements with `overflow: scroll` or `overflow: auto`
+      - Scrollable regions
+
+      **Use for:**
+      - Scroll action targeting
+      - Infinite scroll detection
+    </ResponseField>
+
+    <ResponseField name="full" type="string">
+      Comprehensive snapshot with most visible content.
+
+      **Includes:**
+      - All visible elements
+      - Nested structures
+      - Maximum context
+
+      **Excludes:**
+      - Scripts and styles
+      - Hidden elements
+      - Noise (ads, tracking pixels)
+
+      **Use for:**
+      - Complete page analysis
+      - Content archival
+      - Maximum extraction coverage
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+## Counter Attributes
+
+When `withCounters: true` (default), elements receive `c="N"` attributes:
+
+```html
+<button c="1">Submit</button>
+<input c="2" type="text" />
+<a href="/next" c="3">Next page</a>
+```
+
+Counter values:
+- Are **sequential integers** starting from 1
+- Are **reassigned** on each snapshot
+- Are **synced** to the live DOM (not just the HTML string)
+- Can be used in actions: `{ element: 3 }`
+- Are **unique** per snapshot but **not stable** across page changes
+
+## Caching
+
+Snapshot results are internally cached until the next mutating action (click, input, goto, etc.). Calling `snapshot()` multiple times without navigation returns the cached HTML.
+
+```typescript
+const html1 = await opensteer.snapshot() // Generates snapshot
+const html2 = await opensteer.snapshot() // Returns cached
+
+await opensteer.click({ element: 1 }) // Invalidates cache
+
+const html3 = await opensteer.snapshot() // Generates new snapshot
+```
+
+To force a new snapshot, perform a mutating action or call:
+
+```typescript
+opensteer.clearCache()
+const html = await opensteer.snapshot() // Fresh snapshot
+```
+
+## Performance
+
+Snapshot generation involves:
+1. DOM traversal and filtering
+2. Counter assignment and injection
+3. HTML serialization and cleaning
+
+Typical snapshot time: **50-200ms** depending on page complexity.
+
+For large pages (1000+ elements), prefer narrower modes (`clickable`, `action`) over `full`.
+
+## Cloud Mode
+
+In cloud mode, snapshots are generated remotely and returned as strings. Counter attributes are synced to the cloud browser's DOM.
+
+```typescript
+const opensteer = new Opensteer({ cloud: true })
+await opensteer.launch()
+
+const html = await opensteer.snapshot({ mode: 'extraction' })
+// Snapshot generated on cloud browser
+```
+
+## Related Types
+
+```typescript
+type SnapshotMode =
+  | 'action'
+  | 'extraction'
+  | 'clickable'
+  | 'scrollable'
+  | 'full'
+
+interface SnapshotOptions {
+  mode?: SnapshotMode
+  withCounters?: boolean
+  markInteractive?: boolean
+}
+```
+
+## See Also
+
+- [extract()](/api/extraction/extract) - Extract structured data using element counters
+- [state()](/api/utilities/state) - Get URL, title, and snapshot together
+- [Schema reference](/api/extraction/schemas) - Use counters in extraction schemas

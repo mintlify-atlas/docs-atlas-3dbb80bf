@@ -1,0 +1,546 @@
+---
+title: Schema Types
+description: Schema structure, field types, and extraction plan types for structured data extraction
+---
+
+## ExtractSchema
+
+The `ExtractSchema` defines the structure of data to extract from a page. Schemas support nested objects, arrays, and multiple field types for flexible data extraction.
+
+```typescript
+interface ExtractSchema {
+  [key: string]: ExtractSchemaValue
+}
+
+type ExtractSchemaValue =
+  | ExtractSchemaField
+  | string
+  | number
+  | boolean
+  | null
+  | ExtractSchema
+  | ExtractSchema[]
+```
+
+## Schema Field Types
+
+### ExtractSchemaField
+
+<ParamField path="ExtractSchemaField" type="object">
+  A field descriptor that references a DOM element or special source.
+
+  <Expandable title="properties">
+    <ParamField path="element" type="number">
+      Element counter from a snapshot (e.g., `c="3"` in HTML). Mutually exclusive with `selector` and `source`.
+    </ParamField>
+
+    <ParamField path="selector" type="string">
+      CSS selector to locate the element. Mutually exclusive with `element` and `source`.
+    </ParamField>
+
+    <ParamField path="attribute" type="string">
+      HTML attribute to extract (e.g., `'href'`, `'data-price'`, `'src'`). If omitted, extracts `textContent`.
+    </ParamField>
+
+    <ParamField path="source" type="'current_url'">
+      Special source type. Currently only `'current_url'` is supported, which extracts the page URL.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Element Counter Field
+
+References an element by its counter from a snapshot:
+
+```typescript
+{
+  title: { element: 3 }
+}
+```
+
+Extracts the `textContent` of the element with `c="3"`.
+
+```typescript
+{
+  link: { element: 5, attribute: 'href' }
+}
+```
+
+Extracts the `href` attribute of element `c="5"`.
+
+### CSS Selector Field
+
+References an element by CSS selector:
+
+```typescript
+{
+  price: { selector: '.product-price' }
+}
+```
+
+Extracts text from the first matching element.
+
+```typescript
+{
+  image: { selector: 'img.hero', attribute: 'src' }
+}
+```
+
+Extracts the `src` attribute.
+
+### Current URL Field
+
+Extracts the current page URL:
+
+```typescript
+{
+  url: { source: 'current_url' }
+}
+```
+
+No DOM lookup required - returns `page.url()`.
+
+### Nested Objects
+
+Schemas support arbitrary nesting:
+
+```typescript
+{
+  product: {
+    name: { element: 10 },
+    pricing: {
+      current: { element: 20 },
+      original: { element: 21 },
+      discount: { element: 22 }
+    },
+    metadata: {
+      url: { source: 'current_url' },
+      sku: { selector: '[data-sku]', attribute: 'data-sku' }
+    }
+  }
+}
+```
+
+Result structure mirrors the schema:
+
+```typescript
+{
+  product: {
+    name: "Widget",
+    pricing: {
+      current: "19.99",
+      original: "29.99",
+      discount: "33% off"
+    },
+    metadata: {
+      url: "https://example.com/product",
+      sku: "WDG-001"
+    }
+  }
+}
+```
+
+### Arrays
+
+Arrays of objects are supported for extracting repeated structures:
+
+```typescript
+{
+  results: [
+    {
+      title: { selector: '.result-title' },
+      link: { selector: '.result-link', attribute: 'href' },
+      snippet: { selector: '.result-snippet' }
+    }
+  ]
+}
+```
+
+Opensteer automatically:
+1. Finds all matching parent elements
+2. Extracts each field relative to each parent
+3. Returns an array of objects
+
+```typescript
+{
+  results: [
+    { title: "First result", link: "/first", snippet: "..." },
+    { title: "Second result", link: "/second", snippet: "..." },
+    { title: "Third result", link: "/third", snippet: "..." }
+  ]
+}
+```
+
+### Literal Values
+
+Schemas can include literal values:
+
+```typescript
+{
+  type: 'product',
+  version: 2,
+  extracted: true,
+  timestamp: null,
+  data: {
+    title: { element: 3 }
+  }
+}
+```
+
+Literals are included as-is in the result:
+
+```typescript
+{
+  type: "product",
+  version: 2,
+  extracted: true,
+  timestamp: null,
+  data: { title: "Widget" }
+}
+```
+
+## Complete Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+await opensteer.goto('https://store.example.com/product/123')
+
+interface ProductData {
+  meta: {
+    url: string
+    type: string
+  }
+  product: {
+    name: string
+    price: string
+    images: Array<{ src: string; alt: string }>
+  }
+  reviews: Array<{
+    author: string
+    rating: string
+    text: string
+  }>
+}
+
+const data = await opensteer.extract<ProductData>({
+  description: 'product-page',
+  schema: {
+    meta: {
+      url: { source: 'current_url' },
+      type: 'product',
+    },
+    product: {
+      name: { selector: 'h1.product-name' },
+      price: { selector: '.price-current' },
+      images: [
+        {
+          src: { selector: 'img.product-image', attribute: 'src' },
+          alt: { selector: 'img.product-image', attribute: 'alt' },
+        },
+      ],
+    },
+    reviews: [
+      {
+        author: { selector: '.review-author' },
+        rating: { selector: '.review-rating', attribute: 'data-rating' },
+        text: { selector: '.review-text' },
+      },
+    ],
+  },
+})
+
+console.log(data.product.name)
+console.log(data.reviews.length, 'reviews')
+```
+
+## ExtractionPlan
+
+An `ExtractionPlan` is an intermediate representation returned by AI extraction or used for two-phase extraction with `extractFromPlan()`.
+
+```typescript
+interface ExtractionPlan {
+  fields?: Record<string, ExtractionFieldPlan>
+  paths?: Record<string, ElementPath>
+  data?: unknown
+}
+```
+
+<ParamField path="ExtractionPlan" type="object">
+  <Expandable title="properties">
+    <ParamField path="fields" type="Record<string, ExtractionFieldPlan>">
+      Map of field keys to field extraction plans. Keys support dot-notation for nested fields (e.g., `"product.name"`, `"reviews[0].text"`).
+    </ParamField>
+
+    <ParamField path="paths" type="Record<string, ElementPath>">
+      Map of field keys to resolved element paths. Used as a fallback when `fields` are not provided.
+    </ParamField>
+
+    <ParamField path="data" type="unknown">
+      Pre-extracted data. When present, `extractFromPlan()` returns this data directly without additional DOM queries.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### ExtractionFieldPlan
+
+```typescript
+interface ExtractionFieldPlan {
+  element?: number
+  selector?: string
+  attribute?: string
+  source?: 'current_url'
+}
+```
+
+Similar to `ExtractSchemaField`, but used in plans generated by AI or built programmatically.
+
+## extractFromPlan()
+
+Extract data using a pre-built extraction plan with explicit field mappings and element paths.
+
+### Signature
+
+```typescript
+extractFromPlan<TData>(options: ExtractFromPlanOptions<TSchema>): Promise<ExtractionRunResult<TData>>
+```
+
+### Parameters
+
+<ParamField path="options" type="ExtractFromPlanOptions" required>
+  <Expandable title="properties">
+    <ParamField path="schema" type="ExtractSchema" required>
+      The extraction schema defining the expected data structure.
+    </ParamField>
+
+    <ParamField path="plan" type="ExtractionPlan" required>
+      The extraction plan with field mappings and/or paths.
+    </ParamField>
+
+    <ParamField path="description" type="string">
+      Optional description for caching the resolved paths.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="ExtractionRunResult<TData>" type="object">
+  <Expandable title="properties">
+    <ResponseField name="data" type="TData">
+      The extracted data matching the schema structure.
+    </ResponseField>
+
+    <ResponseField name="paths" type="Record<string, ElementPath>">
+      Map of field keys to resolved element paths used during extraction.
+    </ResponseField>
+
+    <ResponseField name="namespace" type="string">
+      The storage namespace used for caching.
+    </ResponseField>
+
+    <ResponseField name="persisted" type="boolean">
+      Whether the extraction paths were persisted to disk.
+    </ResponseField>
+
+    <ResponseField name="pathFile" type="string | null">
+      The filename where paths were stored, or `null` if not persisted.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example: Two-Phase Extraction
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+await opensteer.goto('https://example.com/data')
+
+// Phase 1: AI generates extraction plan
+const html = await opensteer.snapshot({ mode: 'extraction' })
+const plan = await analyzePageWithAI(html) // Returns ExtractionPlan
+
+// Phase 2: Execute plan with extractFromPlan
+const result = await opensteer.extractFromPlan({
+  description: 'ai-generated-plan',
+  schema: {
+    title: { element: 0 }, // Placeholder schema
+    content: { element: 0 },
+  },
+  plan: {
+    fields: {
+      title: { element: 5 },
+      content: { element: 10 },
+    },
+  },
+})
+
+console.log(result.data) // { title: "...", content: "..." }
+console.log(result.persisted) // true if description was provided
+console.log(result.paths) // ElementPath objects for each field
+```
+
+### Example: Using Pre-Resolved Paths
+
+```typescript
+import { ElementPath } from 'opensteer'
+
+const titlePath: ElementPath = {
+  context: [],
+  nodes: [
+    { tag: 'h1', match: [{ kind: 'class', value: 'page-title' }] },
+  ],
+}
+
+const result = await opensteer.extractFromPlan({
+  schema: {
+    title: { selector: '.page-title' },
+  },
+  plan: {
+    paths: {
+      title: titlePath,
+    },
+  },
+})
+
+console.log(result.data.title)
+```
+
+## Type Definitions
+
+Complete TypeScript types:
+
+```typescript
+import type { ElementPath } from 'opensteer'
+
+export interface ExtractSchemaField {
+  element?: number
+  selector?: string
+  attribute?: string
+  source?: 'current_url'
+}
+
+export type ExtractSchemaValue =
+  | ExtractSchemaField
+  | string
+  | number
+  | boolean
+  | null
+  | ExtractSchema
+  | ExtractSchema[]
+
+export interface ExtractSchema {
+  [key: string]: ExtractSchemaValue
+}
+
+export interface ExtractionFieldPlan {
+  element?: number
+  selector?: string
+  attribute?: string
+  source?: 'current_url'
+}
+
+export interface ExtractionPlan {
+  fields?: Record<string, ExtractionFieldPlan>
+  paths?: Record<string, ElementPath>
+  data?: unknown
+}
+
+export interface ExtractOptions<TSchema = ExtractSchema> {
+  schema?: TSchema
+  description?: string
+  prompt?: string
+  snapshot?: SnapshotOptions
+  element?: number
+  selector?: string
+  wait?: false | ActionWaitOptions
+}
+
+export interface ExtractFromPlanOptions<TSchema = ExtractSchema> {
+  description?: string
+  schema: TSchema
+  plan: ExtractionPlan
+}
+
+export interface ExtractionRunResult<T = unknown> {
+  namespace: string
+  persisted: boolean
+  pathFile: string | null
+  data: T
+  paths: Record<string, ElementPath>
+}
+```
+
+## Best Practices
+
+### Use element counters for dynamic content
+
+```typescript
+// Generate snapshot first
+const html = await opensteer.snapshot({ mode: 'extraction' })
+// Inspect HTML to find counters
+// Then extract using counters
+const data = await opensteer.extract({
+  schema: { title: { element: 3 } },
+})
+```
+
+### Use selectors for stable structures
+
+```typescript
+// Semantic selectors work across page changes
+const data = await opensteer.extract({
+  description: 'article-data',
+  schema: {
+    headline: { selector: 'article h1' },
+    author: { selector: '.author-name' },
+    date: { selector: 'time', attribute: 'datetime' },
+  },
+})
+```
+
+### Cache with descriptions
+
+```typescript
+// Persisted paths survive element counter changes
+const data = await opensteer.extract({
+  description: 'product-listing', // Enables caching
+  schema: {
+    name: { selector: '.product-name' },
+    price: { selector: '.price' },
+  },
+})
+```
+
+### Type your results
+
+```typescript
+interface Article {
+  title: string
+  author: string
+  publishDate: string
+  body: string
+}
+
+const article = await opensteer.extract<Article>({
+  schema: {
+    title: { selector: 'h1' },
+    author: { selector: '.author' },
+    publishDate: { selector: 'time', attribute: 'datetime' },
+    body: { selector: '.article-content' },
+  },
+})
+
+// Fully typed!
+article.title.toUpperCase()
+```
+
+## See Also
+
+- [extract()](/api/extraction/extract) - Main extraction method
+- [snapshot()](/api/extraction/snapshot) - Generate HTML with element counters
+- [ElementPath types](https://github.com/opensteer/opensteer) - Source code reference

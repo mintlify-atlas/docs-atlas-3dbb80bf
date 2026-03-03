@@ -1,0 +1,103 @@
+---
+title: Introduction
+description: Open-source browser automation SDK with robust selectors and deterministic replay
+---
+
+# OpenSteer
+
+Browser automation framework for developers and AI agents with deterministic replay.
+
+OpenSteer gives you one API for local and cloud runs, description-based actions, structured extraction, and CUA agent workflows.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started with OpenSteer in minutes
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Run your first automation script
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Complete SDK and CLI documentation
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples">
+    Real-world automation examples
+  </Card>
+</CardGroup>
+
+## What It Does
+
+OpenSteer provides a unified browser automation framework that works seamlessly across local and cloud environments. Whether you're building automated tests, scraping data, or creating AI-powered browser agents, OpenSteer gives you the tools you need.
+
+**Unified Local/Cloud Execution** - Use the same API surface for both local and cloud runs. Switch between environments without changing your code.
+
+**Descriptor-Aware Actions** - Use natural language descriptions to interact with web pages. OpenSteer automatically persists selectors for deterministic replay.
+
+**Structured Extraction** - Extract data from web pages using typed schemas. Get structured, type-safe results every time.
+
+**CUA Agent Support** - Built-in support for Computer Use Agents with OpenAI, Anthropic, and Google models.
+
+## Key Features
+
+### Robust Selectors with Persistence
+
+OpenSteer's descriptor-aware selectors use LLM-powered resolution with automatic caching. When you describe an element once, the selector is persisted in `.opensteer/selectors/<namespace>` for reliable replay.
+
+```ts
+await opensteer.click({ description: "main call to action" });
+```
+
+### Unified API Surface
+
+One API works everywhere - local development, CI/CD, and cloud execution:
+
+```ts
+const opensteer = new Opensteer({ 
+  name: "my-script",
+  cloud: true // Toggle cloud mode
+});
+```
+
+### HTML Optimization
+
+Automatic HTML cleaning and snapshot modes optimize for different use cases:
+
+- `action` mode: Optimized for element interaction
+- `extraction` mode: Optimized for data extraction
+- Removes noise while preserving semantic structure
+
+### CLI and SDK Interfaces
+
+Use OpenSteer as a CLI tool for interactive sessions or as an SDK for programmatic automation:
+
+```bash
+# CLI mode
+opensteer open https://example.com --session demo
+opensteer click --description "login button" --session demo
+```
+
+```ts
+// SDK mode
+const opensteer = new Opensteer({ name: "demo" });
+await opensteer.launch();
+await opensteer.goto("https://example.com");
+await opensteer.click({ description: "login button" });
+```
+
+## Use Cases
+
+- **Automated Testing**: Create maintainable browser tests with natural language selectors
+- **Data Extraction**: Extract structured data from web pages at scale
+- **AI Agents**: Build browser automation agents that can adapt to changing UIs
+- **Workflow Automation**: Automate repetitive browser tasks with deterministic replay
+- **Quality Assurance**: Validate web applications with description-based assertions
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Install OpenSteer" icon="download" href="/installation">
+    Set up your environment and install dependencies
+  </Card>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Write your first automation script in 5 minutes
+  </Card>
+</CardGroup>

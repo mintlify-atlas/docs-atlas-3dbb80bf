@@ -1,0 +1,166 @@
+---
+title: 'Tab Management'
+description: 'Manage browser tabs with OpenSteer'
+---
+
+## Overview
+
+OpenSteer provides methods to manage browser tabs, including listing, creating, switching, and closing tabs.
+
+## Methods
+
+### tabs
+
+Returns information about all open tabs in the browser context.
+
+```typescript
+await opensteer.tabs(): Promise<TabInfo[]>
+```
+
+<ResponseField name="TabInfo[]" type="array">
+  Array of tab information objects
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+
+const tabs = await opensteer.tabs()
+console.log(`Open tabs: ${tabs.length}`)
+tabs.forEach(tab => {
+  console.log(`[${tab.index}] ${tab.title} - ${tab.url} ${tab.active ? '(active)' : ''}`)
+})
+
+await opensteer.close()
+```
+
+### newTab
+
+Creates a new tab and optionally navigates to a URL.
+
+```typescript
+await opensteer.newTab(url?: string): Promise<TabInfo>
+```
+
+<ParamField path="url" type="string">
+  Optional URL to navigate to in the new tab
+</ParamField>
+
+<ResponseField name="TabInfo" type="object">
+  Information about the newly created tab
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+// Create a blank tab
+const blankTab = await opensteer.newTab()
+
+// Create a tab with a URL
+const tab = await opensteer.newTab('https://example.com')
+console.log(`Created tab ${tab.index}: ${tab.title}`)
+
+await opensteer.close()
+```
+
+### switchTab
+
+Switches to a tab by index.
+
+```typescript
+await opensteer.switchTab(index: number): Promise<void>
+```
+
+<ParamField path="index" type="number" required>
+  Zero-based index of the tab to switch to
+</ParamField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+await opensteer.newTab('https://github.com')
+
+// Switch back to first tab
+await opensteer.switchTab(0)
+
+await opensteer.close()
+```
+
+### closeTab
+
+Closes a tab by index. If no index is provided, closes the current active tab.
+
+```typescript
+await opensteer.closeTab(index?: number): Promise<void>
+```
+
+<ParamField path="index" type="number">
+  Optional zero-based index of the tab to close. If not provided, closes the active tab
+</ParamField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+await opensteer.newTab('https://github.com')
+await opensteer.newTab('https://google.com')
+
+// Close the second tab
+await opensteer.closeTab(1)
+
+// Close the current active tab
+await opensteer.closeTab()
+
+await opensteer.close()
+```
+
+## TabInfo Type
+
+Tab information is represented using the `TabInfo` type:
+
+```typescript
+interface TabInfo {
+  index: number
+  url: string
+  title: string
+  active: boolean
+}
+```
+
+<ResponseField name="index" type="number">
+  Zero-based index of the tab
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Current URL of the tab
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Title of the page in the tab
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether this tab is currently active
+</ResponseField>

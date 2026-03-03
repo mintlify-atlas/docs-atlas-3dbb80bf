@@ -1,0 +1,403 @@
+---
+title: AI Integration
+description: Build AI agents with OpenSteer's snapshot-driven workflow and CUA support
+---
+
+OpenSteer is designed for AI agent integration, providing a snapshot-driven workflow that enables description-based targeting, deterministic replay, and native CUA agent support.
+
+## AI Agent Workflow
+
+OpenSteer follows a simple pattern that works well for both traditional automation and AI agents:
+
+1. Use OpenSteer APIs (`goto`, `snapshot`, `click`, `input`, `extract`) instead of raw Playwright calls
+2. Keep namespace consistent: SDK `name` must match CLI `--name`
+3. Take `snapshot({ mode: "action" })` before actions and `snapshot({ mode: "extraction" })` before extraction
+4. Prefer `description` targeting for persistence and deterministic reruns
+5. Always wrap runs in `try/finally` and call `close()`
+
+## Basic AI Agent Example
+
+```typescript
+import { Opensteer } from "opensteer";
+
+async function aiAgentWorkflow() {
+  const opensteer = new Opensteer({ 
+    name: "ai-agent",
+    model: "gpt-5.1" 
+  });
+
+  try {
+    await opensteer.launch();
+    await opensteer.goto("https://example.com");
+
+    // Take action snapshot for AI to analyze
+    const actionHtml = await opensteer.snapshot({ mode: "action" });
+    
+    // AI analyzes HTML and decides on action
+    // The snapshot includes c="..." counters for element targeting
+    
+    await opensteer.click({ 
+      description: "main call to action",
+      element: 5  // From snapshot analysis
+    });
+
+    // Take extraction snapshot for data gathering
+    const extractionHtml = await opensteer.snapshot({ mode: "extraction" });
+    
+    // AI extracts structured data
+    const data = await opensteer.extract({
+      description: "hero section",
+      schema: { title: "string", href: "string" },
+    });
+
+    console.log(data);
+  } finally {
+    await opensteer.close();
+  }
+}
+```
+
+## Snapshot Modes
+
+OpenSteer provides two snapshot modes optimized for different AI tasks:
+
+### Action Mode
+
+```typescript
+const html = await opensteer.snapshot({ mode: "action" });
+```
+
+Optimized for interaction planning:
+- Includes `c="..."` counter attributes on interactive elements
+- Retains semantic structure for navigation understanding
+- Provides element identifiers for click, input, select operations
+
+### Extraction Mode
+
+```typescript
+const html = await opensteer.snapshot({ mode: "extraction" });
+```
+
+Optimized for data extraction:
+- Focused on content and data structure
+- Removes interactive noise
+- Better for LLM-powered extraction workflows
+
+## CUA Agent Integration
+
+OpenSteer has native support for Computer Use Agents (CUA) from OpenAI, Anthropic, and Google.
+
+```typescript
+import { Opensteer } from "opensteer";
+
+const opensteer = new Opensteer({ 
+  model: "openai/computer-use-preview" 
+});
+
+try {
+  await opensteer.launch();
+  
+  const agent = opensteer.agent({ mode: "cua" });
+  
+  const result = await agent.execute({
+    instruction: "Go to Hacker News and summarize the top story.",
+    maxSteps: 20,
+    highlightCursor: true,
+  });
+
+  console.log(result.message);
+} finally {
+  await opensteer.close();
+}
+```
+
+### Supported CUA Providers
+
+- `openai/computer-use-preview` - OpenAI's CUA model
+- `anthropic/*` - Anthropic's Claude models with computer use
+- `google/*` - Google's CUA-capable models
+
+### CUA Configuration
+
+```typescript
+const agent = opensteer.agent({
+  mode: "cua",
+});
+
+const result = await agent.execute({
+  instruction: "Your task description",
+  maxSteps: 20,              // Maximum steps before stopping
+  highlightCursor: true,     // Visual feedback during execution
+});
+```
+
+## Skills Integration
+
+OpenSteer provides first-party skills for AI coding agents like Claude Code and OpenCode.
+
+### Installing the OpenSteer Skill Pack
+
+```bash
+opensteer skills install
+```
+
+This installs the skill pack that provides:
+- Comprehensive OpenSteer API guidance
+- Best practices for browser automation
+- Pattern recognition for common tasks
+- Error handling strategies
+
+### Using Skills in AI Agents
+
+Skills provide domain-specific instructions that help AI agents:
+- Understand OpenSteer's API patterns
+- Follow best practices automatically
+- Handle edge cases gracefully
+- Generate maintainable code
+
+For Claude Code:
+
+```text
+/plugin marketplace add steerlabs/opensteer
+/plugin install opensteer@opensteer-marketplace
+```
+
+Available skills:
+- [skills/opensteer/SKILL.md](https://github.com/steerlabs/opensteer/blob/main/skills/opensteer/SKILL.md) - Core OpenSteer integration
+- [skills/electron/SKILL.md](https://github.com/steerlabs/opensteer/blob/main/skills/electron/SKILL.md) - Electron app automation
+- [skills/README.md](https://github.com/steerlabs/opensteer/blob/main/skills/README.md) - Skills overview
+
+## Description-Based Targeting
+
+OpenSteer's description-based targeting is ideal for AI agents:
+
+```typescript
+// First run: AI agent provides description + element counter
+await opensteer.click({
+  element: 5,
+  description: "login button",
+});
+
+// Subsequent runs: Description alone works (selector is cached)
+await opensteer.click({
+  description: "login button",
+});
+```
+
+Benefits for AI agents:
+- Natural language interface
+- Automatic selector persistence
+- Deterministic replay without re-analysis
+- Reduced LLM API costs over time
+
+## Multi-Step AI Agent Example
+
+```typescript
+import { Opensteer } from "opensteer";
+
+async function multiStepAgent() {
+  const opensteer = new Opensteer({ 
+    name: "research-agent",
+    model: "gpt-5.1" 
+  });
+
+  try {
+    await opensteer.launch();
+    
+    // Step 1: Navigate to search page
+    await opensteer.goto("https://news.ycombinator.com");
+    
+    // Step 2: Take snapshot for analysis
+    const html = await opensteer.snapshot({ mode: "action" });
+    
+    // Step 3: Click top story (AI analyzes HTML to find element)
+    await opensteer.click({
+      description: "first story link",
+      element: 12,  // Determined from snapshot
+    });
+    
+    // Step 4: Extract article content
+    const extractHtml = await opensteer.snapshot({ mode: "extraction" });
+    
+    const article = await opensteer.extract({
+      description: "Extract article title and main content",
+      schema: {
+        title: "",
+        content: "",
+        author: "",
+      },
+    });
+    
+    // Step 5: Return to HN and extract comments
+    await opensteer.goBack();
+    
+    const comments = await opensteer.extract({
+      description: "Extract top comments",
+      schema: {
+        comments: [
+          {
+            author: "",
+            text: "",
+            points: "",
+          },
+        ],
+      },
+    });
+    
+    return { article, comments };
+  } finally {
+    await opensteer.close();
+  }
+}
+```
+
+## Best Practices for AI Integration
+
+<AccordionGroup>
+  <Accordion title="Always take snapshots before actions">
+    Provide AI agents with current page state:
+    
+    ```typescript
+    // Good
+    const html = await opensteer.snapshot({ mode: "action" });
+    await opensteer.click({ description: "...", element: 5 });
+    
+    // Bad
+    await opensteer.click({ description: "..." });  // No snapshot first
+    ```
+  </Accordion>
+
+  <Accordion title="Use consistent naming conventions">
+    Keep the `name` parameter consistent across runs:
+    
+    ```typescript
+    // SDK
+    const opensteer = new Opensteer({ name: "my-agent" });
+    
+    // CLI (must match SDK name)
+    opensteer snapshot action --name my-agent
+    ```
+  </Accordion>
+
+  <Accordion title="Prefer description-based targeting">
+    Use descriptions for maintainability:
+    
+    ```typescript
+    // Good - replayable and maintainable
+    await opensteer.click({ 
+      description: "submit button",
+      element: 7 
+    });
+    
+    // Less ideal - not replayable
+    await opensteer.click({ selector: "button.submit" });
+    ```
+  </Accordion>
+
+  <Accordion title="Handle errors gracefully">
+    AI agents should handle failures:
+    
+    ```typescript
+    try {
+      await opensteer.click({ description: "login button" });
+    } catch (error) {
+      // Log error and retry or fail gracefully
+      console.error("Action failed:", error);
+      // AI can analyze error and try alternative approach
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Close resources in finally blocks">
+    Always clean up:
+    
+    ```typescript
+    try {
+      // AI agent workflow
+    } finally {
+      await opensteer.close();
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Local vs Cloud Mode for AI Agents
+
+OpenSteer supports both local and cloud execution:
+
+### Local Mode (Default)
+
+```typescript
+const opensteer = new Opensteer({ 
+  name: "ai-agent",
+  model: "gpt-5.1" 
+});
+```
+
+Best for:
+- Development and testing
+- Full control over browser environment
+- File upload support
+- Cookie import/export
+
+### Cloud Mode
+
+```bash
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=<your_api_key>
+```
+
+```typescript
+const opensteer = new Opensteer({ 
+  name: "ai-agent",
+  cloud: true 
+});
+```
+
+Best for:
+- Production deployments
+- Scalable automation
+- Managed infrastructure
+- Reduced operational overhead
+
+<Note>
+Cloud mode is fail-fast and does not automatically fall back to local mode. Some features like `uploadFile()`, `exportCookies()`, and `importCookies()` are local-only.
+</Note>
+
+## Environment Configuration
+
+Configure OpenSteer for AI agents via environment variables:
+
+```bash
+# Model selection
+OPENSTEER_MODEL=gpt-5.1
+
+# Cloud mode
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key
+OPENSTEER_BASE_URL=https://api.opensteer.com
+OPENSTEER_AUTH_SCHEME=api-key
+
+# Session management for CLI
+OPENSTEER_SESSION=my-session
+OPENSTEER_CLIENT_ID=my-client
+```
+
+OpenSteer automatically loads `.env` files from `process.cwd()`, so you can configure agents without manual dotenv setup.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api-reference/opensteer-class">
+    Explore all available methods
+  </Card>
+  <Card title="Skills" icon="wand-magic-sparkles" href="/skills">
+    Learn about OpenSteer skills for AI agents
+  </Card>
+  <Card title="Cloud Integration" icon="cloud" href="/cloud">
+    Deploy AI agents with cloud mode
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli-reference">
+    Use OpenSteer from command line
+  </Card>
+</CardGroup>

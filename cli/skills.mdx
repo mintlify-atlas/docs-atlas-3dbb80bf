@@ -1,0 +1,165 @@
+---
+title: opensteer skills
+description: Install OpenSteer skill pack for AI agents
+---
+
+Installs the first-party OpenSteer skill pack using the upstream "skills" CLI, enabling AI agents to use OpenSteer for browser automation.
+
+## Syntax
+
+```bash
+opensteer skills <install|add> [options]
+```
+
+## Commands
+
+- **`install`**: Install the OpenSteer skill
+- **`add`**: Alias for `install`
+
+## Options
+
+- `-a, --agent <agents...>`: Target specific agent(s)
+- `-g, --global`: Install globally
+- `-y, --yes`: Skip confirmations
+- `--copy`: Copy files instead of symlinking
+- `--all`: Install to all agents
+- `-h, --help`: Show help
+
+## Examples
+
+### Install for Current Directory
+
+```bash
+opensteer skills install
+```
+
+### Install for Specific Agent
+
+```bash
+opensteer skills install --agent codex
+```
+
+### Install Globally with Auto-Confirm
+
+```bash
+opensteer skills add --agent codex --global --yes
+```
+
+### Install to All Agents
+
+```bash
+opensteer skills install --all --yes
+```
+
+### Copy Instead of Symlink
+
+```bash
+opensteer skills install --copy
+```
+
+### Multiple Agents
+
+```bash
+opensteer skills install --agent codex --agent cursor --yes
+```
+
+### Show Help
+
+```bash
+opensteer skills --help
+opensteer skills install --help
+```
+
+## What Gets Installed
+
+The OpenSteer skill pack provides:
+
+- **Skill definitions**: Instructions for AI agents on how to use OpenSteer
+- **Command templates**: Pre-configured command patterns
+- **Best practices**: Guidance on browser automation workflows
+- **Integration tools**: Helper functions for agent integration
+
+## Supported Agents
+
+The skills installer works with agents that support the "skills" CLI, including:
+
+- Codex
+- Cursor
+- Other skill-compatible AI agents
+
+## Installation Modes
+
+### Local Installation
+
+Installs the skill to the current project's agent configuration.
+
+```bash
+opensteer skills install
+```
+
+### Global Installation
+
+Installs the skill to the global agent configuration, making it available across all projects.
+
+```bash
+opensteer skills install --global
+```
+
+### Symlink vs Copy
+
+By default, skills are symlinked to the OpenSteer installation:
+
+- **Symlink** (default): Automatically updates when OpenSteer is updated
+- **Copy** (`--copy`): Creates a standalone copy that won't auto-update
+
+## Confirmation Prompts
+
+By default, the installer asks for confirmation before making changes. Use `--yes` to skip:
+
+```bash
+opensteer skills install --yes
+```
+
+## Output
+
+Unlike other OpenSteer commands, `skills` streams human-readable output from the upstream skills CLI rather than returning JSON.
+
+Example output:
+
+```
+Installing OpenSteer skill pack...
+Target agent: codex
+Installation mode: local
+✓ Skill installed successfully
+```
+
+## Troubleshooting
+
+### Skills Installer Not Found
+
+If you see an error about the skills installer module not being found:
+
+```bash
+# Ensure OpenSteer is properly built
+npm run build
+
+# Or reinstall
+npm install -g opensteer
+```
+
+### Permission Issues
+
+For global installation, you may need elevated permissions:
+
+```bash
+sudo opensteer skills install --global
+```
+
+### Agent Not Detected
+
+If your agent isn't detected automatically:
+
+```bash
+# Specify the agent explicitly
+opensteer skills install --agent <agent-name>
+```

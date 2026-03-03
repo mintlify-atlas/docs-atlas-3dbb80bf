@@ -1,0 +1,140 @@
+---
+title: Basic Usage
+description: Learn the fundamentals of OpenSteer with a complete working example
+---
+
+This example demonstrates the core OpenSteer workflow: launching a browser, navigating to a page, taking a snapshot, and interacting with elements.
+
+## Complete Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+    const opensteer = new Opensteer({ name: 'basic-usage' })
+    await opensteer.launch({ headless: false })
+
+    try {
+        await opensteer.goto('https://example.com')
+
+        const html = await opensteer.snapshot()
+        console.log(html.slice(0, 500))
+
+        await opensteer.click({
+            element: 5,
+            description: 'Click a prominent call-to-action',
+        })
+    } finally {
+        await opensteer.close()
+    }
+}
+
+run().catch((err) => {
+    console.error(err)
+    process.exit(1)
+})
+```
+
+## Step-by-Step Explanation
+
+### 1. Initialize OpenSteer
+
+```typescript
+const opensteer = new Opensteer({ name: 'basic-usage' })
+```
+
+Create an OpenSteer instance with a unique `name`. This name is used as the namespace for selector persistence, allowing you to build replayable scripts.
+
+### 2. Launch the Browser
+
+```typescript
+await opensteer.launch({ headless: false })
+```
+
+Launch a browser instance. Setting `headless: false` opens a visible browser window, which is helpful during development. In production, you can set `headless: true` for performance.
+
+### 3. Navigate to a Page
+
+```typescript
+await opensteer.goto('https://example.com')
+```
+
+Navigate to any URL. OpenSteer waits for the page to load before continuing.
+
+### 4. Take a Snapshot
+
+```typescript
+const html = await opensteer.snapshot()
+console.log(html.slice(0, 500))
+```
+
+Capture a snapshot of the current page. The snapshot includes special `c="..."` counter attributes on interactive elements, which you can use to target elements by number.
+
+Snapshots are essential for:
+- Understanding page structure
+- Identifying element counters for targeting
+- AI agent workflows
+
+### 5. Interact with Elements
+
+```typescript
+await opensteer.click({
+    element: 5,
+    description: 'Click a prominent call-to-action',
+})
+```
+
+Click an element using:
+- `element`: The counter number from the snapshot (e.g., `c="5"`)
+- `description`: A natural language description for selector persistence
+
+When you provide a `description`, OpenSteer saves the selector for future runs. On subsequent executions, you can omit the `element` parameter:
+
+```typescript
+await opensteer.click({
+    description: 'Click a prominent call-to-action',
+})
+```
+
+This makes your scripts deterministic and replayable.
+
+### 6. Clean Up Resources
+
+```typescript
+finally {
+    await opensteer.close()
+}
+```
+
+Always close the OpenSteer instance in a `finally` block to ensure resources are cleaned up, even if errors occur.
+
+## Running the Example
+
+Make sure you have OpenSteer installed:
+
+```bash
+npm install opensteer
+```
+
+If browser binaries are missing:
+
+```bash
+npx playwright install chromium
+```
+
+Run the example:
+
+```bash
+node basic-usage.js
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Extraction" icon="database" href="/examples/data-extraction">
+    Learn how to extract structured data from web pages
+  </Card>
+  <Card title="Form Filling" icon="file-lines" href="/examples/form-filling">
+    See how to fill out and submit forms
+  </Card>
+</CardGroup>

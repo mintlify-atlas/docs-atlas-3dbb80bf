@@ -1,0 +1,400 @@
+---
+title: Skills
+description: Install and use OpenSteer skills with AI coding assistants for browser automation, web scraping, and structured data extraction.
+---
+
+## Overview
+
+OpenSteer provides skill packs for AI coding assistants like Claude Code. Skills give AI assistants specialized knowledge about OpenSteer workflows, best practices, and API usage.
+
+## Installation
+
+### Global CLI Installation
+
+Install the OpenSteer CLI globally to access skills:
+
+```bash
+npm i -g opensteer
+```
+
+### Install Skills
+
+Install skills to your system:
+
+```bash
+opensteer skills install
+```
+
+This installs skills to `~/.config/opencode/skills/` where AI coding assistants can access them.
+
+<Info>
+Skills are installed system-wide and available to all AI assistants that support the skill format.
+</Info>
+
+## Available Skills
+
+### OpenSteer Skill
+
+The main OpenSteer skill provides comprehensive guidance for browser automation and web scraping.
+
+**Location:** `~/.config/opencode/skills/opensteer/`
+
+**Covers:**
+- Browser automation workflows
+- Snapshot modes and element targeting
+- Data extraction with schemas
+- CLI and SDK integration
+- Selector caching and replay
+- Best practices for maintainable scripts
+
+**Use when:**
+- Creating web scrapers
+- Automating browser tasks
+- Extracting structured data from pages
+- Generating replay-able automation scripts
+- Converting CLI exploration to SDK code
+
+### Electron Skill
+
+The Electron skill provides guidance for Electron app automation and testing.
+
+**Location:** `~/.config/opencode/skills/electron/`
+
+**Use when:**
+- Testing Electron applications
+- Automating desktop app workflows
+- Working with Electron-specific features
+
+## Using Skills with AI Assistants
+
+### Claude Code Marketplace Plugin
+
+Install OpenSteer as a Claude Code plugin:
+
+```
+/plugin marketplace add steerlabs/opensteer
+/plugin install opensteer@opensteer-marketplace
+```
+
+This gives Claude Code access to:
+- OpenSteer API documentation
+- Workflow best practices
+- Example patterns
+- Troubleshooting guides
+
+### Manual Skill Reference
+
+AI assistants can reference skills directly:
+
+```
+Load the opensteer skill and help me create a web scraper
+```
+
+The skill provides context-specific guidance for the task.
+
+## Skill Structure
+
+Each skill follows this structure:
+
+```
+skills/<skill-name>/
+  SKILL.md           # Main skill definition
+  references/        # Detailed reference docs
+    *.md
+  templates/         # Reusable code templates
+    *
+```
+
+### SKILL.md Format
+
+Every skill has a `SKILL.md` with frontmatter:
+
+```markdown
+---
+name: opensteer
+description: Browser automation, web scraping, and structured data extraction using Opensteer CLI and SDK.
+---
+
+# Opensteer Browser Automation
+
+[Skill content...]
+```
+
+## OpenSteer Skill Workflow
+
+The OpenSteer skill teaches AI assistants this workflow:
+
+<Steps>
+  <Step title="Explore with CLI">
+    Open pages, snapshot, and interact with elements interactively:
+    
+    ```bash
+    export OPENSTEER_SESSION=my-session
+    opensteer open https://example.com --name "product-scraper"
+    opensteer snapshot action
+    opensteer click 3 --description "the products link"
+    ```
+  </Step>
+
+  <Step title="Cache selectors">
+    Re-run actions with `--description` flags to cache element paths:
+    
+    ```bash
+    opensteer click 3 --description "the submit button"
+    opensteer input 5 "search query" --description "search input"
+    ```
+  </Step>
+
+  <Step title="Cache extractions">
+    Run `extract` with `--description` for every page type:
+    
+    ```bash
+    opensteer snapshot extraction
+    opensteer extract '{"products":[{"name":"","price":""}]}' \
+      --description "product listing"
+    ```
+  </Step>
+
+  <Step title="Generate script">
+    Create SDK script using cached descriptions:
+    
+    ```typescript
+    const opensteer = new Opensteer({ name: 'product-scraper' })
+    await opensteer.click({ description: 'the submit button' })
+    const data = await opensteer.extract({ description: 'product listing' })
+    ```
+  </Step>
+</Steps>
+
+## Critical Rules from Skills
+
+The OpenSteer skill teaches these critical rules:
+
+### Always Use OpenSteer Methods
+
+<CodeGroup>
+```typescript Right (OpenSteer)
+await opensteer.extract({ description: "product listing" })
+await opensteer.click({ description: "submit button" })
+await opensteer.input({ description: "search input", text: "query" })
+```
+
+```typescript Wrong (Raw Playwright)
+await page.evaluate(() => [...document.querySelectorAll('.item')].map(...))
+await page.click('.submit')
+await page.fill('#search', 'query')
+```
+</CodeGroup>
+
+**Why:** OpenSteer methods cache selectors for replay. Raw Playwright is brittle and non-replayable.
+
+### Namespace Consistency
+
+CLI and SDK must use the same `name`:
+
+```bash
+# CLI
+opensteer open https://example.com --name my-scraper
+```
+
+```typescript
+// SDK
+const opensteer = new Opensteer({ name: 'my-scraper' })
+```
+
+### Snapshot Before Actions
+
+```typescript
+// Take snapshot
+await opensteer.snapshot({ mode: 'action' })
+
+// Then act
+await opensteer.click({ description: 'button' })
+```
+
+### Prefer Descriptions
+
+```typescript
+// Good - cached and replayable
+await opensteer.click({ description: 'submit button' })
+
+// Avoid - not replayable
+await opensteer.click({ element: 5 })
+```
+
+## Skill References
+
+Skills include detailed reference documentation:
+
+### CLI Reference
+
+Complete CLI command documentation with options and examples.
+
+### SDK Reference
+
+Full API documentation with method signatures, types, and usage patterns.
+
+### Examples
+
+Real-world examples from the OpenSteer codebase:
+
+- Basic automation
+- Form filling
+- Data extraction
+- Multi-page scraping
+- Tab management
+
+## Creating Custom Skills
+
+You can create custom skills following the OpenSteer skill structure:
+
+### 1. Create Directory
+
+```bash
+mkdir -p ~/.config/opencode/skills/my-skill/references
+mkdir -p ~/.config/opencode/skills/my-skill/templates
+```
+
+### 2. Write SKILL.md
+
+```markdown
+---
+name: my-skill
+description: Custom automation skill for specific domain
+---
+
+# My Custom Skill
+
+Provide detailed instructions, workflows, and best practices.
+```
+
+### 3. Add References
+
+```bash
+# Create reference docs
+touch ~/.config/opencode/skills/my-skill/references/api.md
+touch ~/.config/opencode/skills/my-skill/references/examples.md
+```
+
+### 4. Add Templates
+
+```bash
+# Create code templates
+touch ~/.config/opencode/skills/my-skill/templates/scraper.ts
+```
+
+## Skill Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep one skill per folder">
+    Use a clear folder name that matches the skill:
+    
+    ```
+    skills/opensteer/
+    skills/electron/
+    skills/my-custom-skill/
+    ```
+  </Accordion>
+
+  <Accordion title="Use descriptive frontmatter">
+    ```markdown
+    ---
+    name: opensteer
+    description: Browser automation, web scraping, and structured data extraction using Opensteer CLI and SDK. Use when creating scrapers or automation scripts.
+    ---
+    ```
+    
+    Clear descriptions help AI assistants know when to use the skill.
+  </Accordion>
+
+  <Accordion title="Link to references">
+    ```markdown
+    See [CLI Reference](references/cli-reference.md) for command details.
+    See [SDK Reference](references/sdk-reference.md) for API documentation.
+    ```
+    
+    Use relative links to organize detailed docs.
+  </Accordion>
+
+  <Accordion title="Include templates">
+    Provide reusable code templates:
+    
+    ```
+    templates/
+      basic-scraper.ts
+      form-automation.ts
+      data-extraction.ts
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Verifying Installation
+
+Check that skills are installed correctly:
+
+```bash
+ls ~/.config/opencode/skills/
+```
+
+You should see:
+```
+opensteer/
+electron/
+```
+
+Each skill directory should contain:
+```
+SKILL.md
+references/
+templates/ (optional)
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Skills not found">
+    Ensure skills are installed to the correct location:
+    
+    ```bash
+    opensteer skills install
+    ls ~/.config/opencode/skills/opensteer/
+    ```
+    
+    You should see `SKILL.md` and `references/` directory.
+  </Accordion>
+
+  <Accordion title="AI assistant not using skills">
+    Try explicitly referencing the skill:
+    
+    ```
+    Load the opensteer skill and help me create a scraper
+    ```
+    
+    Or check if your AI assistant supports the skill format.
+  </Accordion>
+
+  <Accordion title="Outdated skill content">
+    Reinstall skills to get latest version:
+    
+    ```bash
+    opensteer skills install
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    Learn the full AI agent workflow with OpenSteer
+  </Card>
+  <Card title="Browser Automation" icon="browser" href="/guides/browser-automation">
+    Explore automation features in detail
+  </Card>
+  <Card title="Data Extraction" icon="database" href="/guides/data-extraction">
+    Master structured data extraction
+  </Card>
+  <Card title="CUA Agent" icon="wand-magic-sparkles" href="/guides/cua-agent">
+    Use Computer Use Agents for automation
+  </Card>
+</CardGroup>

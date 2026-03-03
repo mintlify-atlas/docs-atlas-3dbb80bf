@@ -1,0 +1,203 @@
+---
+title: Opensteer class
+description: Core Opensteer class constructor and configuration options
+icon: cube
+---
+
+## Constructor
+
+Create a new Opensteer instance with optional configuration.
+
+```ts
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer(config?: OpensteerConfig)
+```
+
+### Configuration options
+
+<ParamField path="name" type="string">
+  Namespace for selector persistence. Selectors are stored in `.opensteer/selectors/<name>/`. Defaults to a hash of the current working directory.
+</ParamField>
+
+<ParamField path="browser" type="OpensteerBrowserConfig">
+  Browser launch configuration.
+  
+  <Expandable title="properties">
+    <ParamField path="headless" type="boolean">
+      Run browser in headless mode. Default: `false`
+    </ParamField>
+    
+    <ParamField path="executablePath" type="string">
+      Path to browser executable. If not specified, uses bundled Chromium.
+    </ParamField>
+    
+    <ParamField path="slowMo" type="number">
+      Slow down operations by specified milliseconds. Useful for debugging.
+    </ParamField>
+    
+    <ParamField path="connectUrl" type="string">
+      Connect to a running browser via CDP. Example: `"http://localhost:9222"`
+    </ParamField>
+    
+    <ParamField path="channel" type="string">
+      Browser channel: `"chrome"`, `"chrome-beta"`, or `"msedge"`
+    </ParamField>
+    
+    <ParamField path="profileDir" type="string">
+      Browser profile directory. Preserves cookies, extensions, and sessions across runs.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="storage" type="OpensteerStorageConfig">
+  Storage configuration for selector persistence.
+  
+  <Expandable title="properties">
+    <ParamField path="rootDir" type="string">
+      Root directory for selector storage. Default: `.opensteer` in current directory.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="cloud" type="boolean | OpensteerCloudOptions">
+  Enable cloud mode. Can be `true` for defaults or an options object. See [cloud configuration](/api/cloud/configuration) for details.
+</ParamField>
+
+<ParamField path="model" type="string">
+  Default AI model for element resolution and extraction. Format: `"provider/model"`. Example: `"openai/gpt-4o"`
+</ParamField>
+
+<ParamField path="debug" type="boolean">
+  Enable debug logging. Default: `false`
+</ParamField>
+
+## Static methods
+
+### `Opensteer.from()`
+
+Wrap an existing Playwright `Page` without launching a new browser. The caller retains ownership of the browser lifecycle.
+
+```ts
+import { chromium } from 'playwright'
+import { Opensteer } from 'opensteer'
+
+const browser = await chromium.launch()
+const page = await browser.newPage()
+const opensteer = Opensteer.from(page, { name: 'my-scraper' })
+
+// Use opensteer methods
+await opensteer.goto('https://example.com')
+
+// Caller is responsible for closing
+await browser.close()
+```
+
+<ParamField path="page" type="Page" required>
+  Playwright Page instance to wrap.
+</ParamField>
+
+<ParamField path="config" type="OpensteerConfig">
+  Optional configuration. Same as constructor config.
+</ParamField>
+
+<Warning>
+  This method is **not supported in cloud mode**. It only works with local browser instances.
+</Warning>
+
+## Properties
+
+### `page`
+
+Access the underlying Playwright `Page` instance.
+
+```ts
+const title = await opensteer.page.title()
+await opensteer.page.keyboard.press('Escape')
+```
+
+<Warning>
+  Throws if accessed before `launch()` or `Opensteer.from()`.
+</Warning>
+
+### `context`
+
+Access the underlying Playwright `BrowserContext` instance.
+
+```ts
+const cookies = await opensteer.context.cookies()
+await opensteer.context.clearCookies()
+```
+
+<Warning>
+  Throws if accessed before `launch()` or `Opensteer.from()`.
+</Warning>
+
+## Examples
+
+### Basic configuration
+
+```ts
+const opensteer = new Opensteer({
+  name: 'my-scraper',
+  browser: {
+    headless: true
+  }
+})
+
+await opensteer.launch()
+await opensteer.goto('https://example.com')
+await opensteer.close()
+```
+
+### Cloud mode
+
+```ts
+const opensteer = new Opensteer({
+  name: 'my-scraper',
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY
+  }
+})
+
+await opensteer.launch()
+const sessionUrl = opensteer.getCloudSessionUrl()
+console.log('View session:', sessionUrl)
+await opensteer.close()
+```
+
+### Custom browser profile
+
+```ts
+const opensteer = new Opensteer({
+  name: 'authenticated-scraper',
+  browser: {
+    profileDir: './browser-profile',
+    headless: false
+  }
+})
+
+await opensteer.launch()
+// Cookies and session data persisted in ./browser-profile
+```
+
+### With AI model configuration
+
+```ts
+const opensteer = new Opensteer({
+  name: 'ai-scraper',
+  model: 'anthropic/claude-3-5-sonnet-20241022'
+})
+
+await opensteer.launch()
+await opensteer.goto('https://example.com')
+
+// AI will use configured model for element resolution
+await opensteer.click({ description: 'main call to action button' })
+```
+
+## Related methods
+
+- [launch()](/api/lifecycle#launch) - Launch the browser
+- [close()](/api/lifecycle#close) - Close the browser and cleanup
+- [Cloud configuration](/api/cloud/configuration) - Cloud mode options

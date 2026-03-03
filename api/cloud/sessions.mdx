@@ -1,0 +1,298 @@
+---
+title: 'Cloud Sessions'
+description: 'Manage and monitor OpenSteer Cloud browser sessions'
+icon: 'window'
+---
+
+## Overview
+
+When running in cloud mode, OpenSteer creates remote browser sessions that you can monitor and control. Each session has a unique ID and optional viewing URL.
+
+## Methods
+
+### getCloudSessionId()
+
+```typescript
+browser.getCloudSessionId(): string | null
+```
+
+Returns the current cloud session ID, or `null` if not in cloud mode or session not started.
+
+<ResponseField name="return" type="string | null">
+  Session ID string (e.g., `'sess_abc123...'`) or `null` if:
+  - Cloud mode is not enabled
+  - `launch()` has not been called yet
+  - Session has been closed
+</ResponseField>
+
+### getCloudSessionUrl()
+
+```typescript
+browser.getCloudSessionUrl(): string | null
+```
+
+Returns the URL to view the cloud session in a web browser, or `null` if not available.
+
+<ResponseField name="return" type="string | null">
+  Session URL string (e.g., `'https://app.opensteer.com/session/sess_abc123'`) or `null` if:
+  - Cloud mode is not enabled
+  - `launch()` has not been called yet
+  - Session has been closed
+  - Server did not provide a viewing URL
+</ResponseField>
+
+## Session Lifecycle
+
+### 1. Before Launch
+
+Before calling `launch()`, both methods return `null`:
+
+```typescript
+const browser = new Opensteer({ cloud: true })
+
+console.log(browser.getCloudSessionId()) // null
+console.log(browser.getCloudSessionUrl()) // null
+```
+
+### 2. After Launch
+
+After `launch()`, session details are available:
+
+```typescript
+await browser.launch()
+
+const sessionId = browser.getCloudSessionId()
+const sessionUrl = browser.getCloudSessionUrl()
+
+console.log('Session ID:', sessionId) // 'sess_abc123...'
+console.log('View session:', sessionUrl) // 'https://app.opensteer.com/session/sess_abc123'
+```
+
+### 3. During Execution
+
+Session remains active while performing actions:
+
+```typescript
+await browser.goto('https://example.com')
+const html = await browser.snapshot()
+
+// Session still active
+console.log('Session ID:', browser.getCloudSessionId()) // 'sess_abc123...'
+```
+
+### 4. After Close
+
+After closing, session details are cleared:
+
+```typescript
+await browser.close()
+
+console.log(browser.getCloudSessionId()) // null
+console.log(browser.getCloudSessionUrl()) // null
+```
+
+## Examples
+
+### Basic Session Info
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY!
+  }
+})
+
+await browser.launch()
+
+const sessionId = browser.getCloudSessionId()
+const sessionUrl = browser.getCloudSessionUrl()
+
+if (sessionId) {
+  console.log('✓ Cloud session started:', sessionId)
+}
+
+if (sessionUrl) {
+  console.log('→ View session:', sessionUrl)
+}
+
+await browser.goto('https://example.com')
+await browser.close()
+```
+
+### Logging Session Details
+
+```typescript
+const browser = new Opensteer({ cloud: true })
+await browser.launch()
+
+const logSession = () => {
+  const id = browser.getCloudSessionId()
+  const url = browser.getCloudSessionUrl()
+  
+  if (id) {
+    console.log(`[Session ${id}]`, url || 'No viewing URL')
+  } else {
+    console.log('[No active session]')
+  }
+}
+
+logSession() // [Session sess_abc123] https://app.opensteer.com/session/sess_abc123
+
+await browser.goto('https://example.com')
+logSession() // [Session sess_abc123] https://app.opensteer.com/session/sess_abc123
+
+await browser.close()
+logSession() // [No active session]
+```
+
+### Conditional Cloud Mode
+
+```typescript
+const browser = new Opensteer({
+  cloud: process.env.USE_CLOUD === 'true'
+})
+
+await browser.launch()
+
+if (browser.getCloudSessionId()) {
+  console.log('Running in cloud mode')
+  console.log('Session URL:', browser.getCloudSessionUrl())
+} else {
+  console.log('Running in local mode')
+}
+
+await browser.goto('https://example.com')
+await browser.close()
+```
+
+### Session URL in Test Reports
+
+```typescript
+import { test } from '@playwright/test'
+
+test('cloud automation test', async () => {
+  const browser = new Opensteer({ cloud: true })
+  await browser.launch()
+  
+  const sessionUrl = browser.getCloudSessionUrl()
+  
+  try {
+    await browser.goto('https://example.com')
+    // ... test actions ...
+  } catch (error) {
+    console.error('Test failed. View session:', sessionUrl)
+    throw error
+  } finally {
+    await browser.close()
+  }
+})
+```
+
+### Sharing Session Links
+
+```typescript
+const browser = new Opensteer({ cloud: true })
+await browser.launch()
+
+const shareSession = () => {
+  const url = browser.getCloudSessionUrl()
+  if (url) {
+    console.log('Share this link to view the live session:')
+    console.log(url)
+  } else {
+    console.log('Session URL not available')
+  }
+}
+
+shareSession()
+
+await browser.goto('https://example.com')
+const html = await browser.snapshot()
+
+shareSession()
+
+await browser.close()
+```
+
+### Session Monitoring
+
+```typescript
+class SessionMonitor {
+  constructor(private browser: Opensteer) {}
+  
+  getStatus() {
+    const sessionId = this.browser.getCloudSessionId()
+    const sessionUrl = this.browser.getCloudSessionUrl()
+    
+    return {
+      active: sessionId !== null,
+      sessionId: sessionId || undefined,
+      viewUrl: sessionUrl || undefined,
+      timestamp: new Date().toISOString()
+    }
+  }
+  
+  printStatus() {
+    const status = this.getStatus()
+    console.log(JSON.stringify(status, null, 2))
+  }
+}
+
+const browser = new Opensteer({ cloud: true })
+const monitor = new SessionMonitor(browser)
+
+await browser.launch()
+monitor.printStatus()
+// {
+//   "active": true,
+//   "sessionId": "sess_abc123",
+//   "viewUrl": "https://app.opensteer.com/session/sess_abc123",
+//   "timestamp": "2026-03-03T12:00:00.000Z"
+// }
+
+await browser.close()
+monitor.printStatus()
+// {
+//   "active": false,
+//   "timestamp": "2026-03-03T12:00:30.000Z"
+// }
+```
+
+## Session Announcement
+
+By default, OpenSteer announces session details to stderr on launch:
+
+```
+[opensteer] cloud session ready sessionId=sess_abc123 workspaceId=ws_xyz url=https://app.opensteer.com/session/sess_abc123
+```
+
+Control announcements with the `announce` option:
+
+```typescript
+// Always announce (default)
+const browser = new Opensteer({
+  cloud: { apiKey: '...', announce: 'always' }
+})
+
+// Only announce in TTY (interactive terminals)
+const browser = new Opensteer({
+  cloud: { apiKey: '...', announce: 'tty' }
+})
+
+// Never announce
+const browser = new Opensteer({
+  cloud: { apiKey: '...', announce: 'off' }
+})
+```
+
+## Notes
+
+- Session IDs are unique per launch
+- Session URLs may not be available depending on cloud configuration
+- Both methods return `null` in local (non-cloud) mode
+- Session details are cleared immediately after `close()`
+- You can safely call these methods before `launch()` - they return `null`
+- Session URLs allow team members to observe automation in real-time
+- Sessions are automatically closed and cleaned up when the connection ends

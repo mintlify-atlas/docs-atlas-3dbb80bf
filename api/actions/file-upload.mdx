@@ -1,0 +1,200 @@
+---
+title: uploadFile
+description: Upload one or more files to file input elements
+---
+
+## Method Signature
+
+```typescript
+await opensteer.uploadFile(options: FileUploadOptions): Promise<ActionResult>
+```
+
+Uploads files to a file input element (`<input type="file">`). Supports both single and multiple file uploads.
+
+<Warning>
+  **Local-only feature:** This method is only available in local mode and is not supported in cloud mode. File paths must be accessible on the local filesystem where the browser is running.
+</Warning>
+
+## Parameters
+
+<ParamField path="options" type="FileUploadOptions" required>
+  Configuration for the file upload action
+  
+  <Expandable title="FileUploadOptions properties">
+    <ParamField path="paths" type="string[]" required>
+      Array of absolute file paths to upload. For single file uploads, provide an array with one path.
+    </ParamField>
+    
+    <ParamField path="description" type="string">
+      Natural language description of the file input element. Used for AI-powered element resolution when `element` or `selector` are not provided.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact file input element.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the file input element.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("uploadFile")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Upload Single File
+
+```typescript
+import path from 'path'
+
+// Upload a single file
+await opensteer.uploadFile({
+  description: 'Profile picture upload',
+  paths: [path.resolve(__dirname, 'avatar.png')]
+})
+```
+
+### Upload Multiple Files
+
+```typescript
+import path from 'path'
+
+// Upload multiple files to input with 'multiple' attribute
+await opensteer.uploadFile({
+  description: 'Document upload',
+  paths: [
+    path.resolve(__dirname, 'document1.pdf'),
+    path.resolve(__dirname, 'document2.pdf'),
+    path.resolve(__dirname, 'document3.pdf')
+  ]
+})
+```
+
+### Upload with Selector
+
+```typescript
+import path from 'path'
+
+// Use CSS selector to identify file input
+await opensteer.uploadFile({
+  selector: 'input[type="file"]',
+  description: 'File upload input',
+  paths: [path.resolve(__dirname, 'data.csv')]
+})
+```
+
+### Upload with Element Counter
+
+```typescript
+import path from 'path'
+
+// Use element counter from snapshot
+await opensteer.uploadFile({
+  element: 27,
+  description: 'Resume upload',
+  paths: [path.resolve(__dirname, 'resume.pdf')]
+})
+```
+
+### Upload and Submit Form
+
+```typescript
+import path from 'path'
+
+// Upload file and submit form
+await opensteer.uploadFile({
+  description: 'File attachment',
+  paths: [path.resolve(__dirname, 'attachment.zip')]
+})
+
+// Click submit button
+await opensteer.click({
+  description: 'Upload button'
+})
+```
+
+### Upload with Absolute Paths
+
+```typescript
+// Using absolute paths directly
+await opensteer.uploadFile({
+  description: 'Image upload',
+  paths: ['/Users/username/Pictures/photo.jpg']
+})
+```
+
+### Dynamic File Upload
+
+```typescript
+import path from 'path'
+import fs from 'fs'
+
+// Get files from directory
+const uploadsDir = path.resolve(__dirname, 'uploads')
+const files = fs.readdirSync(uploadsDir)
+  .map(file => path.join(uploadsDir, file))
+  .filter(file => fs.statSync(file).isFile())
+
+// Upload all files
+await opensteer.uploadFile({
+  description: 'Bulk file upload',
+  paths: files
+})
+```
+
+## Important Notes
+
+<Warning>
+  **Cloud Mode:** This method throws an error in cloud mode because file paths must be accessible on the browser runtime, which is remote in cloud mode.
+</Warning>
+
+<Info>
+  **File Paths:** Always use absolute file paths. Use `path.resolve()` or `path.join()` from Node.js to construct proper absolute paths.
+</Info>
+
+<Tip>
+  **Multiple Files:** The file input element must have the `multiple` attribute to accept multiple files. If uploading multiple files to a single-file input, only the first file will be used.
+</Tip>
+
+## Common Use Cases
+
+- Uploading profile pictures or avatars
+- Attaching documents to forms
+- Importing CSV or data files
+- Uploading images to galleries
+- Submitting file-based applications
+
+## Related methods
+
+- [click](/api/actions/click) - Click upload buttons after selecting files
+- [input](/api/actions/input) - Fill other form fields
+- [state](/api/utilities/state) - Check page state after upload

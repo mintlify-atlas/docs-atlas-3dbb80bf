@@ -1,0 +1,444 @@
+---
+title: AI Agents Integration
+description: Integrate OpenSteer with AI agents for replayable, maintainable browser automation workflows with deterministic selector caching.
+---
+
+## Overview
+
+OpenSteer is designed for AI agents to create browser automation scripts that are replayable and maintainable. This guide covers the workflow, best practices, and integration patterns for AI-driven automation.
+
+## Why OpenSteer for AI Agents?
+
+<CardGroup cols={2}>
+  <Card title="Deterministic Replay" icon="rotate">
+    Selector caching ensures scripts work consistently across runs
+  </Card>
+  <Card title="Description-Based Actions" icon="tag">
+    Natural language element targeting instead of brittle CSS selectors
+  </Card>
+  <Card title="Automatic Waiting" icon="clock">
+    No manual waits - OpenSteer handles element readiness
+  </Card>
+  <Card title="Structured Extraction" icon="database">
+    AI-powered data extraction with typed schemas
+  </Card>
+</CardGroup>
+
+## Recommended Workflow
+
+For AI agents to create maintainable automation scripts:
+
+<Steps>
+  <Step title="Use OpenSteer APIs instead of raw Playwright">
+    Always prefer OpenSteer methods over direct Playwright calls:
+    
+    <CodeGroup>
+    ```typescript Right (OpenSteer)
+    await opensteer.click({ description: 'submit button' })
+    await opensteer.input({ description: 'email field', text: 'user@example.com' })
+    await opensteer.extract({ description: 'product listing', schema })
+    ```
+    
+    ```typescript Wrong (Raw Playwright)
+    await page.click('.submit')
+    await page.fill('#email', 'user@example.com')
+    await page.evaluate(() => {
+      return [...document.querySelectorAll('.item')].map(el => ({
+        title: el.querySelector('.title')?.textContent
+      }))
+    })
+    ```
+    </CodeGroup>
+    
+    **Why:** OpenSteer methods cache selectors for replay and handle waiting automatically.
+  </Step>
+
+  <Step title="Keep namespace consistent">
+    The SDK `name` parameter must match the CLI `--name` flag:
+    
+    ```bash
+    # CLI exploration
+    opensteer open https://example.com --name product-scraper
+    ```
+    
+    ```typescript
+    // SDK script
+    const opensteer = new Opensteer({ name: 'product-scraper' })
+    ```
+    
+    **Why:** This ensures selector cache is shared between exploration and script execution.
+  </Step>
+
+  <Step title="Take snapshots before actions and extraction">
+    Always snapshot before interacting with elements:
+    
+    ```typescript
+    // Before actions
+    await opensteer.snapshot({ mode: 'action' })
+    await opensteer.click({ description: 'login button' })
+    
+    // Before extraction
+    await opensteer.snapshot({ mode: 'extraction' })
+    const data = await opensteer.extract({ description: 'products', schema })
+    ```
+    
+    **Why:** Snapshots provide element counters for targeting and help AI identify elements.
+  </Step>
+
+  <Step title="Prefer description targeting">
+    Use descriptions for all actions you want to replay:
+    
+    ```typescript
+    // Good - replayable
+    await opensteer.click({ description: 'search button' })
+    
+    // Acceptable for exploration
+    await opensteer.click({ element: 5, description: 'search button' })
+    
+    // Avoid - not replayable
+    await opensteer.click({ element: 5 })
+    ```
+    
+    **Why:** Descriptions enable selector caching for deterministic replay.
+  </Step>
+
+  <Step title="Always wrap in try/finally">
+    Ensure resources are cleaned up:
+    
+    ```typescript
+    const opensteer = new Opensteer({ name: 'my-scraper' })
+    
+    try {
+      await opensteer.launch()
+      // ... automation steps
+    } finally {
+      await opensteer.close()
+    }
+    ```
+    
+    **Why:** Prevents browser processes from leaking.
+  </Step>
+</Steps>
+
+## Critical Rules for AI Agents
+
+<Warning>
+**NEVER use raw Playwright when OpenSteer methods exist**
+
+OpenSteer provides:
+- `opensteer.click()` instead of `page.click()`
+- `opensteer.input()` instead of `page.fill()`
+- `opensteer.extract()` instead of `page.evaluate()` + `querySelectorAll`
+- `opensteer.snapshot()` instead of `page.content()`
+
+Raw Playwright bypasses caching and makes scripts brittle.
+</Warning>
+
+<Info>
+**The only valid use of `page.evaluate()` is calling `fetch()`** for API-based extraction when a site has internal REST/GraphQL endpoints.
+</Info>
+
+## Element Targeting Preferences
+
+<AccordionGroup>
+  <Accordion title="1. Description (Recommended)">
+    Use natural language descriptions:
+    
+    ```typescript
+    await opensteer.click({ description: 'the submit button' })
+    await opensteer.input({ description: 'email input', text: 'user@example.com' })
+    ```
+    
+    - Cached after first resolution
+    - Works across page structure changes
+    - Replayable and maintainable
+  </Accordion>
+
+  <Accordion title="2. Element Counter (Exploration)">
+    Use counters from snapshots during exploration:
+    
+    ```typescript
+    await opensteer.snapshot({ mode: 'action' })
+    await opensteer.click({ element: 5, description: 'submit button' })
+    ```
+    
+    - Fast during development
+    - Combine with description for caching
+    - Not replayable without description
+  </Accordion>
+
+  <Accordion title="3. CSS Selector (Last Resort)">
+    Use explicit selectors only when necessary:
+    
+    ```typescript
+    await opensteer.click({ selector: '#unique-id' })
+    ```
+    
+    - Brittle - breaks on DOM changes
+    - No caching benefits
+    - Use only for stable, unique IDs
+  </Accordion>
+</AccordionGroup>
+
+## Script Template
+
+AI agents should generate scripts following this pattern:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+  const opensteer = new Opensteer({
+    name: 'script-name',  // Match CLI --name
+    storage: { rootDir: process.cwd() },
+  })
+
+  await opensteer.launch({ headless: false })
+
+  try {
+    await opensteer.goto('https://example.com')
+
+    // Take snapshot before actions
+    await opensteer.snapshot({ mode: 'action' })
+
+    // Perform actions with descriptions
+    await opensteer.input({
+      text: 'search query',
+      description: 'search input',
+    })
+
+    await opensteer.click({ description: 'search button' })
+
+    // Take snapshot before extraction
+    await opensteer.snapshot({ mode: 'extraction' })
+
+    // Extract with description and schema
+    const data = await opensteer.extract({
+      description: 'search results',
+      schema: {
+        results: [{ title: '', url: '' }]
+      },
+    })
+
+    console.log(JSON.stringify(data, null, 2))
+  } finally {
+    await opensteer.close()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+```
+
+<Tip>
+**No top-level await** - Always wrap in `async function run()` + `run().catch(...)`
+</Tip>
+
+## Common Patterns
+
+### Form Filling
+
+```typescript
+// Fill multiple fields
+await opensteer.input({ description: 'first name', text: 'Ada' })
+await opensteer.input({ description: 'last name', text: 'Lovelace' })
+await opensteer.input({ description: 'email', text: 'ada@example.com' })
+
+// Select dropdown
+await opensteer.select({ description: 'country', label: 'United States' })
+
+// Submit
+await opensteer.click({ description: 'submit button' })
+```
+
+### Multi-Page Navigation
+
+```typescript
+// List page
+await opensteer.goto('https://example.com/products')
+await opensteer.snapshot({ mode: 'extraction' })
+const products = await opensteer.extract({
+  description: 'product listing',
+  schema: { items: [{ title: '', url: '' }] }
+})
+
+// Detail page
+await opensteer.click({ description: 'first product link' })
+await opensteer.snapshot({ mode: 'extraction' })
+const details = await opensteer.extract({
+  description: 'product details',
+  schema: { description: '', price: '', specs: [''] }
+})
+```
+
+### Handling Dynamic Content
+
+```typescript
+// Wait for SPA content
+await opensteer.waitForText('Results loaded')
+
+// Then snapshot and extract
+await opensteer.snapshot({ mode: 'extraction' })
+const data = await opensteer.extract({ description: 'results', schema })
+```
+
+### Tab Management
+
+```typescript
+// Open in new tab
+await opensteer.newTab()
+await opensteer.goto('https://example.com')
+
+// Switch between tabs
+await opensteer.switchTab(0)
+
+// Close tab
+await opensteer.closeTab()
+```
+
+## Skills Installation
+
+OpenSteer provides skills for AI coding assistants.
+
+### CLI Installation
+
+Install the OpenSteer skill pack globally:
+
+```bash
+npm i -g opensteer
+opensteer skills install
+```
+
+This installs skills to `~/.config/opencode/skills/` for AI assistants to use.
+
+### Claude Code Marketplace Plugin
+
+For Claude Code, install via the marketplace:
+
+```
+/plugin marketplace add steerlabs/opensteer
+/plugin install opensteer@opensteer-marketplace
+```
+
+This gives Claude Code access to OpenSteer documentation and workflows.
+
+### Available Skills
+
+<CardGroup cols={2}>
+  <Card title="opensteer" icon="browser">
+    Browser automation, web scraping, and structured data extraction
+  </Card>
+  <Card title="electron" icon="window-restore">
+    Electron app automation and testing
+  </Card>
+</CardGroup>
+
+See the [Skills guide](/guides/skills) for detailed usage.
+
+## Debugging Agent-Generated Scripts
+
+When a script fails:
+
+<Steps>
+  <Step title="Check namespace consistency">
+    Verify `name` matches between CLI and SDK:
+    
+    ```bash
+    # CLI
+    opensteer open https://example.com --name my-scraper
+    ```
+    
+    ```typescript
+    // SDK
+    const opensteer = new Opensteer({ name: 'my-scraper' })
+    ```
+  </Step>
+
+  <Step title="Verify selectors are cached">
+    Check `.opensteer/selectors/<namespace>/` directory for cached selectors.
+  </Step>
+
+  <Step title="Add timing waits for SPAs">
+    ```typescript
+    await opensteer.waitForText('Content loaded')
+    await opensteer.snapshot({ mode: 'extraction' })
+    ```
+  </Step>
+
+  <Step title="Remove obstacles">
+    Handle cookie banners, modals, or login walls:
+    
+    ```typescript
+    await opensteer.click({ description: 'close cookie banner' })
+    ```
+  </Step>
+</Steps>
+
+## Best Practices Summary
+
+<AccordionGroup>
+  <Accordion title="Do: Use OpenSteer APIs">
+    ```typescript
+    // Good
+    await opensteer.click({ description: 'button' })
+    await opensteer.extract({ description: 'data', schema })
+    ```
+  </Accordion>
+
+  <Accordion title="Don't: Use raw Playwright">
+    ```typescript
+    // Bad
+    await page.click('.button')
+    await page.evaluate(() => document.querySelector('.data').textContent)
+    ```
+  </Accordion>
+
+  <Accordion title="Do: Provide descriptions">
+    ```typescript
+    // Good - replayable
+    await opensteer.click({ description: 'submit button' })
+    ```
+  </Accordion>
+
+  <Accordion title="Don't: Skip descriptions">
+    ```typescript
+    // Bad - not replayable
+    await opensteer.click({ element: 5 })
+    ```
+  </Accordion>
+
+  <Accordion title="Do: Take snapshots">
+    ```typescript
+    // Good
+    await opensteer.snapshot({ mode: 'action' })
+    await opensteer.click({ description: 'button' })
+    ```
+  </Accordion>
+
+  <Accordion title="Don't: Add manual waits before actions">
+    ```typescript
+    // Bad - actions handle waiting automatically
+    await page.waitForTimeout(1000)
+    await opensteer.click({ description: 'button' })
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Skills Guide" icon="puzzle-piece" href="/guides/skills">
+    Install and use OpenSteer skills with AI assistants
+  </Card>
+  <Card title="CUA Agent" icon="wand-magic-sparkles" href="/guides/cua-agent">
+    Use Computer Use Agents for natural language automation
+  </Card>
+  <Card title="Browser Automation" icon="browser" href="/guides/browser-automation">
+    Learn core automation features and patterns
+  </Card>
+  <Card title="Data Extraction" icon="database" href="/guides/data-extraction">
+    Extract structured data with typed schemas
+  </Card>
+</CardGroup>

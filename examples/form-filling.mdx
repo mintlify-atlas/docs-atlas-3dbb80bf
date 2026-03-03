@@ -1,0 +1,348 @@
+---
+title: Form Filling
+description: Automate form interactions with description-based targeting
+---
+
+OpenSteer makes form filling simple and reliable with description-based targeting and automatic selector persistence.
+
+## Complete Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+    const opensteer = new Opensteer({
+        name: 'contact-form',
+        model: 'gpt-5-mini',
+    })
+    await opensteer.launch({ headless: false })
+
+    try {
+        await opensteer.goto('https://www.w3schools.com/html/html_forms.asp')
+
+        await opensteer.input({
+            text: 'Ada Lovelace',
+            description: 'Fill first name',
+        })
+
+        await opensteer.input({
+            text: 'Lovelace',
+            description: 'Fill in last name',
+        })
+        
+        await opensteer.click({
+            description: 'Submit the form',
+        })
+    } finally {
+        await opensteer.close()
+    }
+}
+
+run().catch((err) => {
+    console.error(err)
+    process.exit(1)
+})
+```
+
+## Form Interaction Methods
+
+### Text Input
+
+```typescript
+await opensteer.input({
+    text: 'Ada Lovelace',
+    description: 'Fill first name',
+})
+```
+
+The `input()` method:
+- Fills text into input fields, textareas, and contenteditable elements
+- Accepts a `description` for natural language targeting
+- Persists selectors for deterministic replay
+- Supports optional `element` counter or `selector` for targeting
+
+### Dropdown Selection
+
+```typescript
+await opensteer.select({
+    value: 'california',
+    description: 'Select state dropdown',
+})
+```
+
+The `select()` method:
+- Chooses options from `<select>` dropdowns
+- Can target by value, label, or index
+- Works with single and multi-select elements
+
+### Checkbox and Radio Buttons
+
+```typescript
+await opensteer.click({
+    description: 'Accept terms and conditions',
+})
+```
+
+Use `click()` for checkboxes and radio buttons. OpenSteer handles the interaction intelligently.
+
+### Form Submission
+
+```typescript
+await opensteer.click({
+    description: 'Submit the form',
+})
+```
+
+Click the submit button using a natural language description. OpenSteer will find and click the appropriate button.
+
+## Step-by-Step Breakdown
+
+### 1. Initialize with a Namespace
+
+```typescript
+const opensteer = new Opensteer({
+    name: 'contact-form',
+    model: 'gpt-5-mini',
+})
+```
+
+The `name` parameter creates a selector namespace. All selectors resolved for this instance are saved to `.opensteer/selectors/contact-form/`, making your script replayable.
+
+Using `gpt-5-mini` is cost-effective for simple form interactions.
+
+### 2. Navigate to the Form
+
+```typescript
+await opensteer.goto('https://www.w3schools.com/html/html_forms.asp')
+```
+
+Navigate to the page containing the form.
+
+### 3. Fill Form Fields
+
+```typescript
+await opensteer.input({
+    text: 'Ada Lovelace',
+    description: 'Fill first name',
+})
+
+await opensteer.input({
+    text: 'Lovelace',
+    description: 'Fill in last name',
+})
+```
+
+Fill each field with descriptive targeting. On the first run, OpenSteer:
+1. Takes a snapshot if needed
+2. Uses LLM to resolve the description to a selector
+3. Saves the selector to `.opensteer/selectors/contact-form/`
+4. Fills the field
+
+On subsequent runs, OpenSteer reuses the saved selector, making the script deterministic.
+
+### 4. Submit the Form
+
+```typescript
+await opensteer.click({
+    description: 'Submit the form',
+})
+```
+
+Click the submit button using a description. OpenSteer finds the button and clicks it.
+
+## Advanced Form Patterns
+
+### File Upload
+
+```typescript
+await opensteer.uploadFile({
+    filePath: '/path/to/document.pdf',
+    description: 'Upload resume',
+})
+```
+
+<Note>
+`uploadFile()` is only available in local mode. Cloud mode does not support file uploads.
+</Note>
+
+### Multi-Step Forms
+
+```typescript
+// Page 1
+await opensteer.input({
+    text: 'user@example.com',
+    description: 'Email input',
+})
+
+await opensteer.click({
+    description: 'Next button',
+})
+
+// Wait for navigation
+await opensteer.waitForSelector('form')
+
+// Page 2
+await opensteer.input({
+    text: 'SecurePassword123',
+    description: 'Password input',
+})
+
+await opensteer.click({
+    description: 'Create account button',
+})
+```
+
+### Conditional Fields
+
+```typescript
+// Select option that reveals additional fields
+await opensteer.select({
+    value: 'business',
+    description: 'Account type',
+})
+
+// Fill conditional field
+await opensteer.input({
+    text: 'Acme Corp',
+    description: 'Company name',
+})
+```
+
+### Form Validation Handling
+
+```typescript
+try {
+    await opensteer.click({
+        description: 'Submit button',
+    })
+    
+    // Check for success message
+    const html = await opensteer.snapshot()
+    if (html.includes('Success')) {
+        console.log('Form submitted successfully')
+    }
+} catch (error) {
+    console.error('Form submission failed:', error)
+}
+```
+
+## Using Element Counters
+
+For the first run, you can use element counters from a snapshot:
+
+```typescript
+// Take a snapshot first
+const html = await opensteer.snapshot({ mode: 'action' })
+console.log(html)
+
+// Use counter from snapshot
+await opensteer.input({
+    element: 12,
+    text: 'Ada Lovelace',
+    description: 'Fill first name',
+})
+```
+
+The `c="12"` counter in the snapshot tells you which element to target. After the first run, you can omit the `element` parameter.
+
+## Deterministic Replay
+
+After running your script once, selectors are persisted. You can simplify your code:
+
+```typescript
+// First run (with counters or LLM resolution)
+await opensteer.input({
+    element: 12,
+    text: 'Ada Lovelace',
+    description: 'Fill first name',
+})
+
+// Subsequent runs (using persisted selector)
+await opensteer.input({
+    text: 'Ada Lovelace',
+    description: 'Fill first name',
+})
+```
+
+This makes your automation:
+- Faster (no LLM calls needed)
+- Deterministic (same selector every time)
+- Cost-effective (reduced API usage)
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use consistent descriptions">
+    Keep your descriptions the same across runs to benefit from selector persistence:
+    
+    ```typescript
+    // Good - consistent description
+    description: 'Fill first name'
+    
+    // Bad - varying descriptions
+    description: 'Enter first name'
+    description: 'Type in first name'
+    ```
+  </Accordion>
+
+  <Accordion title="Take snapshots for development">
+    During development, take snapshots to identify element counters:
+    
+    ```typescript
+    const html = await opensteer.snapshot({ mode: 'action' })
+    console.log(html)
+    ```
+    
+    This helps you understand the page structure and find the right elements.
+  </Accordion>
+
+  <Accordion title="Handle dynamic forms gracefully">
+    For forms with dynamic fields, use conditional logic:
+    
+    ```typescript
+    if (needsBusinessInfo) {
+      await opensteer.input({
+        text: 'Acme Corp',
+        description: 'Company name',
+      })
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Clean up resources">
+    Always close OpenSteer in a finally block:
+    
+    ```typescript
+    try {
+      // Form filling logic
+    } finally {
+      await opensteer.close()
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Running the Example
+
+Install OpenSteer:
+
+```bash
+npm install opensteer
+```
+
+Run the example:
+
+```bash
+node form-filling.js
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Integration" icon="brain" href="/examples/ai-integration">
+    Learn how to build AI agents with OpenSteer
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/opensteer-class">
+    Explore all available methods
+  </Card>
+</CardGroup>

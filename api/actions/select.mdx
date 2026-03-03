@@ -1,0 +1,174 @@
+---
+title: select
+description: Select options from dropdown menus by value, label, or index
+---
+
+## Method Signature
+
+```typescript
+await opensteer.select(options: SelectOptions): Promise<ActionResult>
+```
+
+Selects an option from a `<select>` dropdown element. You must specify one of: `value`, `label`, or `index`.
+
+## Parameters
+
+<ParamField path="options" type="SelectOptions" required>
+  Configuration for the select action
+  
+  <Expandable title="SelectOptions properties">
+    <ParamField path="value" type="string">
+      The value attribute of the option to select. One of `value`, `label`, or `index` is required.
+    </ParamField>
+    
+    <ParamField path="label" type="string">
+      The visible text of the option to select. One of `value`, `label`, or `index` is required.
+    </ParamField>
+    
+    <ParamField path="index" type="number">
+      The zero-based index of the option to select. One of `value`, `label`, or `index` is required.
+    </ParamField>
+    
+    <ParamField path="description" type="string">
+      Natural language description of the select element. Used for AI-powered element resolution when `element` or `selector` are not provided.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact select element.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the select element.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("select")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Select by Label
+
+```typescript
+// Select option by visible text
+await opensteer.select({
+  description: 'Country dropdown',
+  label: 'United States'
+})
+```
+
+### Select by Value
+
+```typescript
+// Select option by value attribute
+await opensteer.select({
+  description: 'Language selector',
+  value: 'en-US'
+})
+```
+
+### Select by Index
+
+```typescript
+// Select the third option (zero-based index)
+await opensteer.select({
+  description: 'Priority dropdown',
+  index: 2
+})
+```
+
+### Select with Selector
+
+```typescript
+// Use CSS selector to identify dropdown
+await opensteer.select({
+  selector: '#country-select',
+  label: 'Canada',
+  description: 'Country dropdown'
+})
+```
+
+### Select with Element Counter
+
+```typescript
+// Use element counter from snapshot
+await opensteer.select({
+  element: 18,
+  description: 'State dropdown',
+  value: 'CA'
+})
+```
+
+### Multiple Dropdowns in Form
+
+```typescript
+// Fill out a form with multiple select elements
+await opensteer.select({
+  description: 'Country',
+  label: 'United States'
+})
+
+await opensteer.select({
+  description: 'State',
+  label: 'California'
+})
+
+await opensteer.select({
+  description: 'City',
+  value: 'san-francisco'
+})
+```
+
+### Select First Option
+
+```typescript
+// Select the first option in a dropdown
+await opensteer.select({
+  description: 'Sort by dropdown',
+  index: 0
+})
+```
+
+## Important Notes
+
+<Warning>
+  You must provide exactly one of `value`, `label`, or `index`. The action will fail if none are specified.
+</Warning>
+
+<Info>
+  This method only works with native `<select>` elements. For custom dropdown components (like those built with `<div>` and `<ul>`), use [click](/api/actions/click) and [input](/api/actions/input) actions instead.
+</Info>
+
+## Related methods
+
+- [click](/api/actions/click) - Click on custom dropdown elements
+- [input](/api/actions/input) - Type into searchable dropdowns
+- [hover](/api/actions/hover) - Hover over dropdown elements

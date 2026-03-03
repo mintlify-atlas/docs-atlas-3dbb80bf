@@ -1,0 +1,283 @@
+---
+title: 'Cloud Configuration'
+description: 'Configure OpenSteer Cloud for remote browser automation'
+icon: 'cloud'
+---
+
+## Overview
+
+OpenSteer Cloud enables browser automation to run on remote infrastructure. When cloud mode is enabled, all browser interactions are executed on cloud-hosted browsers while your local code controls them via API.
+
+## Configuration
+
+Cloud mode is configured via the `cloud` option in `OpensteerConfig`:
+
+```typescript
+const browser = new Opensteer({
+  cloud: {
+    apiKey: 'your-api-key',
+    baseUrl: 'https://api.opensteer.com',
+    authScheme: 'api-key',
+    announce: 'tty'
+  }
+})
+```
+
+### Simple Enable
+
+```typescript
+// Enable cloud with environment variables only
+const browser = new Opensteer({
+  cloud: true
+})
+```
+
+### Configuration Options
+
+<ParamField path="cloud" type="boolean | OpensteerCloudOptions">
+  Cloud configuration. Set to `true` to enable with defaults, or provide an options object for custom configuration.
+</ParamField>
+
+<ParamField path="cloud.apiKey" type="string">
+  API key for OpenSteer Cloud authentication. **Required** when cloud mode is enabled.
+  
+  If not provided in config, reads from `OPENSTEER_API_KEY` environment variable.
+</ParamField>
+
+<ParamField path="cloud.baseUrl" type="string" default="https://api.opensteer.com">
+  Base URL for the OpenSteer Cloud API. Override for custom deployments or testing.
+  
+  Environment variable: `OPENSTEER_BASE_URL`
+</ParamField>
+
+<ParamField path="cloud.authScheme" type="OpensteerAuthScheme" default="api-key">
+  Authentication scheme for cloud API requests.
+  
+  - `'api-key'` - Send API key as `X-API-Key` header (default)
+  - `'bearer'` - Send API key as `Authorization: Bearer` token
+  
+  Environment variable: `OPENSTEER_AUTH_SCHEME`
+</ParamField>
+
+<ParamField path="cloud.announce" type="OpensteerCloudAnnouncePolicy" default="always">
+  Controls whether cloud session information is printed to stderr on launch.
+  
+  - `'always'` - Always announce session details (default)
+  - `'tty'` - Only announce if stderr is a TTY (interactive terminal)
+  - `'off'` - Never announce session details
+</ParamField>
+
+## Environment Variables
+
+Cloud configuration can be set via environment variables:
+
+### OPENSTEER_MODE
+
+```bash
+export OPENSTEER_MODE=cloud
+```
+
+Enable cloud mode. Equivalent to setting `cloud: true` in config.
+
+### OPENSTEER_API_KEY
+
+```bash
+export OPENSTEER_API_KEY=your-api-key-here
+```
+
+**Required** API key for authentication. You can obtain an API key from your OpenSteer Cloud dashboard.
+
+### OPENSTEER_BASE_URL
+
+```bash
+export OPENSTEER_BASE_URL=https://custom.api.example.com
+```
+
+Override the default base URL. Defaults to `https://api.opensteer.com`.
+
+### OPENSTEER_AUTH_SCHEME
+
+```bash
+export OPENSTEER_AUTH_SCHEME=bearer
+```
+
+Set authentication scheme. Options: `api-key` (default) or `bearer`.
+
+## Examples
+
+### Using Environment Variables
+
+```bash
+export OPENSTEER_MODE=cloud
+export OPENSTEER_API_KEY=sk-proj-abc123...
+```
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+// Cloud mode enabled via environment variables
+const browser = new Opensteer()
+await browser.launch()
+
+// Session details printed to stderr:
+// [opensteer] cloud session ready sessionId=sess_abc workspaceId=ws_xyz url=https://app.opensteer.com/session/sess_abc
+
+await browser.goto('https://example.com')
+await browser.close()
+```
+
+### Explicit Configuration
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY!,
+    baseUrl: 'https://api.opensteer.com',
+    authScheme: 'api-key',
+    announce: 'always'
+  }
+})
+
+await browser.launch()
+
+const sessionId = browser.getCloudSessionId()
+const sessionUrl = browser.getCloudSessionUrl()
+
+console.log('Session ID:', sessionId)
+console.log('View session:', sessionUrl)
+
+await browser.goto('https://example.com')
+await browser.close()
+```
+
+### Bearer Authentication
+
+```typescript
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.AUTH_TOKEN!,
+    authScheme: 'bearer' // Send as Authorization: Bearer header
+  }
+})
+
+await browser.launch()
+```
+
+### Custom Base URL
+
+```typescript
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY!,
+    baseUrl: 'https://eu.opensteer.com' // EU region
+  }
+})
+
+await browser.launch()
+```
+
+### Silent Mode (No Announcements)
+
+```typescript
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY!,
+    announce: 'off' // Don't print session details
+  }
+})
+
+await browser.launch()
+// No session announcement to stderr
+```
+
+### TTY-Only Announcements
+
+```typescript
+const browser = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY!,
+    announce: 'tty' // Only announce in interactive terminals
+  }
+})
+
+await browser.launch()
+// Announces only if running in a terminal, not in CI/CD
+```
+
+## Session Announcement
+
+When `announce` is enabled, OpenSteer prints session information to stderr on launch:
+
+```
+[opensteer] cloud session ready sessionId=sess_abc123 workspaceId=ws_xyz456 url=https://app.opensteer.com/session/sess_abc123
+```
+
+This includes:
+
+- **sessionId** - Unique identifier for the cloud session
+- **workspaceId** - Your workspace identifier
+- **url** - Direct link to view the session in your browser
+
+## Authentication Schemes
+
+### api-key (Default)
+
+Sends API key in custom header:
+
+```
+X-API-Key: your-api-key
+```
+
+### bearer
+
+Sends API key as Bearer token:
+
+```
+Authorization: Bearer your-api-key
+```
+
+## Cloud Limitations
+
+Some methods are not supported in cloud mode:
+
+- `Opensteer.from(page)` - Cannot attach to external pages
+- `exportCookies()` - Requires local filesystem access
+- `importCookies()` - Requires local filesystem access
+
+These methods will throw `OpensteerCloudError` with code `CLOUD_UNSUPPORTED_METHOD`.
+
+## Error Handling
+
+```typescript
+import { OpensteerCloudError } from 'opensteer'
+
+try {
+  const browser = new Opensteer({
+    cloud: {
+      apiKey: 'invalid-key'
+    }
+  })
+  await browser.launch()
+} catch (error) {
+  if (error instanceof OpensteerCloudError) {
+    console.error('Cloud error:', error.code, error.message)
+  }
+}
+```
+
+Common error codes:
+
+- `CLOUD_NOT_LAUNCHED` - Cloud session not initialized
+- `CLOUD_ACTION_FAILED` - Cloud action execution failed
+- `CLOUD_UNSUPPORTED_METHOD` - Method not supported in cloud mode
+
+## Notes
+
+- API key is **required** for cloud mode - no default value
+- Cloud sessions are automatically closed when `browser.close()` is called
+- All browser actions are executed remotely with results streamed back
+- Cloud mode is automatically detected from `OPENSTEER_MODE=cloud` environment variable
+- Session URLs allow you to view live browser sessions in your web browser
+- Use `announce: 'tty'` to avoid log pollution in CI/CD environments

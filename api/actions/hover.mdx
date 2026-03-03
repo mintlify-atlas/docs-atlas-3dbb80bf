@@ -1,0 +1,160 @@
+---
+title: hover
+description: Hover over elements to trigger hover states, tooltips, and dropdown menus
+---
+
+## Method Signature
+
+```typescript
+await opensteer.hover(options: HoverOptions): Promise<ActionResult>
+```
+
+Moves the mouse cursor over an element without clicking. Useful for triggering hover effects, tooltips, and dropdown menus.
+
+## Parameters
+
+<ParamField path="options" type="HoverOptions" required>
+  Configuration for the hover action
+  
+  <Expandable title="HoverOptions properties">
+    <ParamField path="description" type="string">
+      Natural language description of the element to hover over. Used for AI-powered element resolution when `element` or `selector` are not provided.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact element.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the element.
+    </ParamField>
+    
+    <ParamField path="force" type="boolean" default="false">
+      Whether to bypass actionability checks and force the hover action.
+    </ParamField>
+    
+    <ParamField path="position" type="{ x: number, y: number }">
+      A specific point within the element to hover over, relative to the top-left corner.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("hover")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Hover
+
+```typescript
+// Hover to reveal dropdown menu
+await opensteer.hover({
+  description: 'Settings menu'
+})
+```
+
+### Hover with Selector
+
+```typescript
+// Hover using CSS selector
+await opensteer.hover({
+  selector: '.profile-avatar',
+  description: 'User avatar'
+})
+```
+
+### Show Tooltip
+
+```typescript
+// Hover to display tooltip
+await opensteer.hover({
+  description: 'Help icon'
+})
+
+// Extract tooltip text
+const tooltip = await opensteer.getElementText({
+  description: 'Tooltip'
+})
+```
+
+### Navigate Nested Menus
+
+```typescript
+// Hover over parent menu
+await opensteer.hover({
+  description: 'File menu'
+})
+
+// Hover over submenu
+await opensteer.hover({
+  description: 'Export submenu'
+})
+
+// Click final option
+await opensteer.click({
+  description: 'Export as PDF'
+})
+```
+
+### Hover at Specific Position
+
+```typescript
+// Hover at a specific point within the element
+await opensteer.hover({
+  description: 'Image preview',
+  position: { x: 100, y: 50 }
+})
+```
+
+### Force Hover
+
+```typescript
+// Force hover even if element is not immediately actionable
+await opensteer.hover({
+  description: 'Hidden menu trigger',
+  force: true
+})
+```
+
+### Hover with Element Counter
+
+```typescript
+// Use element counter from snapshot
+await opensteer.hover({
+  element: 23,
+  description: 'Navigation item'
+})
+```
+
+## Related methods
+
+- [click](/api/actions/click) - Click on elements
+- [scroll](/api/actions/scroll) - Scroll elements into view before hovering
+- [input](/api/actions/input) - Fill text into inputs

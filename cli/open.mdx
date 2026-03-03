@@ -1,0 +1,100 @@
+---
+title: opensteer open
+description: Open browser and navigate to a URL
+---
+
+Opens a browser session and navigates to the specified URL. This command starts a daemon if one is not already running for the session.
+
+## Syntax
+
+```bash
+opensteer open <url> [options]
+```
+
+## Arguments
+
+- **`url`**: The URL to navigate to
+
+## Options
+
+- `--session <id>`: Session ID to use (overrides `OPENSTEER_SESSION`)
+- `--name <namespace>`: Selector cache namespace (overrides `OPENSTEER_NAME`)
+- `--headless`: Launch browser in headless mode
+- `--connect-url <url>`: Connect to an existing browser instance
+- `--channel <browser>`: Use specific browser (`chrome`, `chrome-beta`, `msedge`)
+- `--profile-dir <path>`: Browser profile directory for persistent login sessions
+
+## Examples
+
+### Basic Usage
+
+```bash
+opensteer open https://example.com
+```
+
+### With Session ID
+
+```bash
+opensteer open https://example.com --session agent-a
+```
+
+### With Named Selector Cache
+
+```bash
+opensteer open https://example.com --session agent-a --name product-scraper
+```
+
+### Headless Mode
+
+```bash
+opensteer open https://example.com --headless
+```
+
+### Connect to Running Browser
+
+```bash
+# Start Chrome with debugging enabled:
+# google-chrome --remote-debugging-port=9222
+
+opensteer open https://example.com --connect-url http://localhost:9222
+```
+
+### With Browser Profile
+
+```bash
+opensteer open https://example.com --profile-dir /path/to/profile
+```
+
+### Using Environment Variables
+
+```bash
+export OPENSTEER_SESSION=my-session
+export OPENSTEER_NAME=my-namespace
+
+opensteer open https://example.com
+```
+
+## Response
+
+```json
+{
+  "ok": true
+}
+```
+
+## Session Behavior
+
+- If no server is running for the session, `open` will start a new daemon
+- The daemon runs in the background and persists until `opensteer close` is called
+- Multiple sessions can run concurrently with different `--session` IDs
+- In interactive terminals, a default session is created if none is specified
+- In non-interactive mode, you must set `OPENSTEER_SESSION` or `OPENSTEER_CLIENT_ID`
+
+## Selector Namespace
+
+The `--name` flag sets the selector cache namespace:
+
+- Used for persistent element selectors across commands
+- Defaults to the session ID if not specified
+- Can be overridden with `OPENSTEER_NAME` environment variable
+- Allows multiple namespaces per session for different workflows

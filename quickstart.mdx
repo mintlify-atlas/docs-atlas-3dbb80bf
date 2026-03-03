@@ -1,80 +1,287 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get started with OpenSteer in minutes with SDK, CUA agent, or CLI examples
 ---
 
-## Get started in three steps
+Get up and running with OpenSteer in three different ways: SDK, CUA Agent, or CLI.
 
-Get your documentation site running locally and make your first customization.
+<Tabs>
+  <Tab title="SDK">
+    <Steps>
+      <Step title="Install OpenSteer">
+        Install the SDK package in your project:
+        
+        <CodeGroup>
+        ```bash npm
+        npm install opensteer
+        ```
+        
+        ```bash pnpm
+        pnpm add opensteer
+        ```
+        
+        ```bash bun
+        bun add opensteer
+        ```
+        </CodeGroup>
+      </Step>
+      
+      <Step title="Create your first script">
+        Create a new file `quickstart.ts` with this complete working example:
+        
+        ```ts
+        import { Opensteer } from "opensteer";
 
-### Step 1: Set up your local environment
+        const opensteer = new Opensteer({ name: "quickstart" });
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+        try {
+          await opensteer.launch();
+          await opensteer.goto("https://example.com");
+
+          await opensteer.snapshot({ mode: "action" });
+          await opensteer.click({ description: "main call to action" });
+
+          await opensteer.snapshot({ mode: "extraction" });
+          const data = await opensteer.extract({
+            description: "hero section",
+            schema: { title: "string", href: "string" },
+          });
+
+          console.log(data);
+        } finally {
+          await opensteer.close();
+        }
+        ```
+      </Step>
+      
+      <Step title="Run your script">
+        Execute the script:
+        
+        ```bash
+        node quickstart.ts
+        ```
+        
+        The script will:
+        1. Launch a browser
+        2. Navigate to example.com
+        3. Take an action snapshot and click an element
+        4. Take an extraction snapshot and extract structured data
+        5. Close the browser
+      </Step>
+      
+      <Step title="Understand the key concepts">
+        **Namespace (`name`)**: Selectors are persisted in `.opensteer/selectors/quickstart/` for deterministic replay.
+        
+        **Snapshots**: `mode: "action"` optimizes HTML for interactions, `mode: "extraction"` optimizes for data extraction.
+        
+        **Descriptions**: Natural language element targeting like `"main call to action"` uses AI to find elements and persists selectors.
+        
+        **Schema extraction**: Define the structure you want with `{ title: "string", href: "string" }` and OpenSteer extracts it.
+      </Step>
+      
+      <Step title="Next steps">
+        Explore more capabilities:
+        
+        <CardGroup cols={2}>
+          <Card title="Actions" icon="hand-pointer" href="/api/actions/click">
+            Click, input, hover, select, scroll, and more
+          </Card>
+          <Card title="Extraction" icon="database" href="/api/extraction/extract">
+            Extract structured data with typed schemas
+          </Card>
+          <Card title="Browser automation" icon="browser" href="/guides/browser-automation">
+            Complete guide to browser operations
+          </Card>
+          <Card title="Cloud mode" icon="cloud" href="/guides/cloud-integration">
+            Run in the cloud instead of locally
+          </Card>
+        </CardGroup>
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="CUA Agent">
+    <Steps>
+      <Step title="Install OpenSteer">
+        ```bash
+        npm install opensteer
+        ```
+      </Step>
+      
+      <Step title="Set up API key">
+        Set your model provider API key:
+        
+        ```bash
+        export OPENAI_API_KEY="your-api-key"
+        # or ANTHROPIC_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY
+        ```
+      </Step>
+      
+      <Step title="Create CUA agent script">
+        Create `agent.ts`:
+        
+        ```ts
+        import { Opensteer } from "opensteer";
+
+        const opensteer = new Opensteer({ 
+          model: "openai/computer-use-preview" 
+        });
+
+        try {
+          await opensteer.launch();
+          const agent = opensteer.agent({ mode: "cua" });
+          
+          const result = await agent.execute({
+            instruction: "Go to Hacker News and open the top story.",
+            maxSteps: 20,
+          });
+          
+          console.log(result.message);
+          console.log("Actions taken:", result.actions.length);
+        } finally {
+          await opensteer.close();
+        }
+        ```
+      </Step>
+      
+      <Step title="Run the agent">
+        ```bash
+        node agent.ts
+        ```
+        
+        The agent will:
+        1. Navigate to Hacker News
+        2. Identify the top story link
+        3. Click on it
+        4. Report back with the result
+      </Step>
+      
+      <Step title="Configure agent behavior">
+        Customize the agent with options:
+        
+        ```ts
+        const result = await agent.execute({
+          instruction: "Find and summarize the top 3 posts",
+          maxSteps: 30,           // Allow more steps for complex tasks
+          highlightCursor: true    // Visualize agent actions
+        });
+        ```
+      </Step>
+    </Steps>
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Warning>
+      CUA agents perform autonomous browser actions. Always test with safe websites and appropriate `maxSteps` limits.
+    </Warning>
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    <Info>
+      Supported providers: OpenAI (`openai/computer-use-preview`), Anthropic (`anthropic/claude-3-7-sonnet-20250219`), Google (`google/gemini-2.0-flash-exp`)
+    </Info>
+  </Tab>
+  
+  <Tab title="CLI">
+    <Steps>
+      <Step title="Install globally">
+        ```bash
+        npm i -g opensteer
+        opensteer skills install
+        ```
+      </Step>
+      
+      <Step title="Open a browser session">
+        ```bash
+        opensteer open https://example.com --session demo --name quickstart
+        ```
+        
+        This opens a browser, navigates to the URL, and creates a session named `demo` with namespace `quickstart`.
+      </Step>
+      
+      <Step title="Take an action snapshot">
+        ```bash
+        opensteer snapshot action --session demo
+        ```
+        
+        This returns cleaned HTML with element counters for targeting.
+      </Step>
+      
+      <Step title="Interact with elements">
+        ```bash
+        opensteer click --description "main call to action" --session demo
+        ```
+        
+        Click elements using natural language descriptions.
+      </Step>
+      
+      <Step title="Extract data">
+        First, take an extraction snapshot:
+        
+        ```bash
+        opensteer snapshot extraction --session demo
+        ```
+        
+        Then extract structured data:
+        
+        ```bash
+        opensteer extract '{"title":"string","href":"string"}' --description "hero section" --session demo
+        ```
+      </Step>
+      
+      <Step title="Close the session">
+        ```bash
+        opensteer close --session demo
+        ```
+      </Step>
+    </Steps>
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    <Tip>
+      For CI/CD environments, set `OPENSTEER_SESSION` or `OPENSTEER_CLIENT_ID` environment variables instead of using `--session` flag.
+    </Tip>
+  </Tab>
+</Tabs>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Best practices for AI agents
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+If you're building AI agents that generate browser automation scripts:
 
-### Step 3: Go live
+1. **Use OpenSteer APIs** instead of raw Playwright calls for persistent, replayable scripts
+2. **Keep namespace consistent**: SDK `name` must match CLI `--name`
+3. **Take snapshots before actions**: `snapshot({ mode: "action" })` before interactions, `snapshot({ mode: "extraction" })` before data extraction
+4. **Prefer description targeting**: More maintainable than CSS selectors
+5. **Always cleanup**: Wrap in `try/finally` and call `close()`
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Info>
+  See [AI Agents guide](/guides/ai-agents) for complete integration patterns and [Skills](/guides/skills) for installing the OpenSteer skill.
+</Info>
+
+## Additional examples
+
+<CardGroup cols={2}>
+  <Card title="Basic usage" icon="play" href="/examples/basic-usage">
+    Navigate, snapshot, and interact with pages
+  </Card>
+  <Card title="Data extraction" icon="table" href="/examples/data-extraction">
+    Extract structured data from websites
+  </Card>
+  <Card title="Form filling" icon="pen-to-square" href="/examples/form-filling">
+    Automate form submissions
+  </Card>
+  <Card title="AI integration" icon="brain" href="/examples/ai-integration">
+    Build AI agents with OpenSteer
+  </Card>
+</CardGroup>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="API Reference" icon="code" href="/api/opensteer">
+    Explore the complete API documentation
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Learn all CLI commands and options
+  </Card>
+  <Card title="Selectors" icon="bullseye-pointer" href="/concepts/selectors-and-replay">
+    Understand selector persistence and replay
+  </Card>
+  <Card title="Cloud integration" icon="cloud" href="/guides/cloud-integration">
+    Run browser automation in the cloud
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

@@ -1,0 +1,150 @@
+---
+title: opensteer extract
+description: Extract structured data from the page
+---
+
+Extracts structured data from the current page using a JSON schema definition.
+
+## Syntax
+
+```bash
+opensteer extract <schema> [options]
+```
+
+## Arguments
+
+- **`schema`**: JSON string defining the extraction schema
+
+## Options
+
+- `--session <id>`: Session ID to use
+- `--description <text>`: Description of what to extract
+- `--schema <json>`: Alternative way to specify the schema
+
+## Examples
+
+### Simple Field Extraction
+
+```bash
+opensteer extract '{"title":"string","price":"number"}' --session agent-a
+```
+
+### Product Information
+
+```bash
+opensteer extract '{
+  "name": "string",
+  "price": "number",
+  "rating": "number",
+  "inStock": "boolean"
+}' --session agent-a
+```
+
+### With Description
+
+```bash
+opensteer extract '{"email":"string","phone":"string"}' \
+  --description "Contact information" \
+  --session agent-a
+```
+
+### Array Extraction
+
+```bash
+opensteer extract '{
+  "products": [
+    {
+      "name": "string",
+      "price": "number"
+    }
+  ]
+}' --session agent-a
+```
+
+### Using --schema Flag
+
+```bash
+opensteer extract --schema '{"title":"string"}' --session agent-a
+```
+
+### Complex Nested Schema
+
+```bash
+opensteer extract '{
+  "article": {
+    "title": "string",
+    "author": {
+      "name": "string",
+      "bio": "string"
+    },
+    "publishedDate": "string",
+    "tags": ["string"]
+  }
+}' --session agent-a
+```
+
+## Response
+
+Returns the extracted data matching the schema:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "title": "Example Product",
+    "price": 29.99,
+    "rating": 4.5,
+    "inStock": true
+  }
+}
+```
+
+## Schema Format
+
+The schema is a JSON object that defines the structure of data to extract:
+
+- **Primitive types**: `"string"`, `"number"`, `"boolean"`
+- **Objects**: Nested objects with typed fields
+- **Arrays**: `[type]` or `[{object schema}]`
+
+### Examples
+
+```json
+// Simple fields
+{
+  "name": "string",
+  "age": "number",
+  "active": "boolean"
+}
+
+// Nested object
+{
+  "user": {
+    "name": "string",
+    "email": "string"
+  }
+}
+
+// Array of strings
+{
+  "tags": ["string"]
+}
+
+// Array of objects
+{
+  "items": [
+    {
+      "id": "number",
+      "name": "string"
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- Web scraping structured data from product pages
+- Extracting article metadata and content
+- Gathering contact information from directories
+- Collecting pricing and availability data
+- Building datasets from web pages

@@ -1,0 +1,546 @@
+---
+title: Data Extraction
+description: Extract structured data from web pages using OpenSteer's AI-powered extraction with typed schemas and deterministic replay.
+---
+
+## Overview
+
+OpenSteer provides powerful data extraction capabilities that combine AI vision models with persistent element paths. Define a schema, and OpenSteer extracts matching data with automatic caching for fast, deterministic replay.
+
+## How Extraction Works
+
+1. **Take extraction snapshot** - Get data-oriented HTML representation
+2. **Define schema** - Specify the structure of data you want
+3. **Extract data** - OpenSteer uses AI to map page elements to schema
+4. **Cache paths** - Element paths are saved for instant replay
+
+## Basic Extraction
+
+### Define a Schema
+
+Schemas define the structure of data you want to extract:
+
+```typescript
+const schema = {
+  title: '',
+  price: '',
+  description: ''
+}
+```
+
+### Extract Data
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({ name: 'product-scraper' })
+
+try {
+  await opensteer.launch()
+  await opensteer.goto('https://example.com/product')
+
+  // Take extraction snapshot
+  await opensteer.snapshot({ mode: 'extraction' })
+
+  // Extract with schema
+  const data = await opensteer.extract({
+    description: 'product details',
+    schema: {
+      title: '',
+      price: '',
+      imageUrl: ''
+    }
+  })
+
+  console.log(data)
+  // { title: 'Product Name', price: '$99.99', imageUrl: 'https://...' }
+} finally {
+  await opensteer.close()
+}
+```
+
+<Info>
+The first extraction uses AI vision to locate elements. Subsequent runs use cached paths for instant extraction.
+</Info>
+
+## Schema Field Types
+
+### String Fields
+
+Extract text content:
+
+```typescript
+const schema = {
+  name: '',
+  description: '',
+  category: ''
+}
+```
+
+### Number Fields
+
+Extract numeric values:
+
+```typescript
+const schema = {
+  price: 0,
+  rating: 0,
+  reviewCount: 0
+}
+```
+
+### Boolean Fields
+
+Extract boolean values:
+
+```typescript
+const schema = {
+  inStock: true,
+  onSale: false
+}
+```
+
+### Null Fields
+
+Extract nullable values:
+
+```typescript
+const schema = {
+  salePrice: null,  // May or may not exist
+  badge: null
+}
+```
+
+## Nested Structures
+
+### Object Fields
+
+Extract nested objects:
+
+```typescript
+const schema = {
+  product: {
+    name: '',
+    price: '',
+    specs: {
+      weight: '',
+      dimensions: ''
+    }
+  }
+}
+
+const data = await opensteer.extract({
+  description: 'product with specs',
+  schema
+})
+
+// Result:
+// {
+//   product: {
+//     name: 'Widget',
+//     price: '$50',
+//     specs: { weight: '1kg', dimensions: '10x10cm' }
+//   }
+// }
+```
+
+### Array Fields
+
+Extract lists of items:
+
+```typescript
+const schema = {
+  products: [
+    {
+      title: '',
+      price: '',
+      imageUrl: ''
+    }
+  ]
+}
+
+const data = await opensteer.extract({
+  description: 'product listing',
+  schema
+})
+
+// Result:
+// {
+//   products: [
+//     { title: 'Product 1', price: '$10', imageUrl: 'https://...' },
+//     { title: 'Product 2', price: '$20', imageUrl: 'https://...' },
+//     { title: 'Product 3', price: '$30', imageUrl: 'https://...' }
+//   ]
+// }
+```
+
+<Tip>
+For arrays, OpenSteer automatically finds all matching items and extracts their fields.
+</Tip>
+
+## Advanced Field Options
+
+### Extract Attributes
+
+Extract HTML attributes instead of text:
+
+```typescript
+const schema = {
+  imageUrl: { element: 0, attribute: 'src' },
+  linkUrl: { element: 0, attribute: 'href' },
+  productId: { element: 0, attribute: 'data-id' }
+}
+```
+
+### Extract Current URL
+
+Include the current page URL in extraction:
+
+```typescript
+const schema = {
+  title: '',
+  price: '',
+  sourceUrl: { source: 'current_url' }
+}
+
+const data = await opensteer.extract({
+  description: 'product with url',
+  schema
+})
+
+// Result:
+// {
+//   title: 'Product',
+//   price: '$99',
+//   sourceUrl: 'https://example.com/product/123'
+// }
+```
+
+### Explicit Element Selectors
+
+Manually specify elements from snapshots:
+
+```typescript
+const schema = {
+  title: { element: 5 },
+  price: { element: 8 },
+  image: { element: 3, attribute: 'src' }
+}
+```
+
+### CSS Selectors
+
+Use explicit CSS selectors:
+
+```typescript
+const schema = {
+  title: { selector: 'h1.product-title' },
+  price: { selector: '.price-value' }
+}
+```
+
+## Real-World Example
+
+Here's a complete extraction script from the OpenSteer source:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+  const opensteer = new Opensteer({
+    name: 'product-extraction',
+    model: 'gpt-5.1',
+  })
+
+  await opensteer.launch({ headless: false })
+
+  try {
+    await opensteer.goto(
+      'https://kbdfans.com/search?type=product&q=tactile+switches'
+    )
+
+    console.log('Starting extraction...')
+    const data = await opensteer.extract({
+      description: 'Extract product cards with title, price, image, and url',
+      schema: {
+        products: [
+          {
+            title: '',
+            price: '',
+            imageUrl: '',
+            url: '',
+          },
+        ],
+      },
+    })
+
+    console.log(data)
+  } finally {
+    await opensteer.close()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+```
+
+## Two-Phase Extraction
+
+For complex extractions, use `extractFromPlan()` to separate planning from execution.
+
+### Phase 1: Generate Plan
+
+First extraction generates an extraction plan:
+
+```typescript
+const plan = await opensteer.extract({
+  description: 'product listing',
+  schema: {
+    products: [{ title: '', price: '' }]
+  }
+})
+
+// Plan contains:
+// - fields: Element counter mappings
+// - paths: Cached element paths
+// - data: Initial extracted data
+```
+
+### Phase 2: Execute Plan
+
+Reuse the plan for fast extraction:
+
+```typescript
+const data = await opensteer.extractFromPlan({
+  description: 'product listing',
+  schema: {
+    products: [{ title: '', price: '' }]
+  },
+  plan: plan
+})
+```
+
+<Info>
+`extractFromPlan()` skips AI inference and uses cached paths directly. This is significantly faster for repeated extractions.
+</Info>
+
+## Extraction Options
+
+### Custom Snapshot
+
+Provide snapshot options:
+
+```typescript
+const data = await opensteer.extract({
+  description: 'product data',
+  schema: { title: '', price: '' },
+  snapshot: {
+    mode: 'extraction',
+    withCounters: true
+  }
+})
+```
+
+### Custom Prompt
+
+Add instructions for the AI:
+
+```typescript
+const data = await opensteer.extract({
+  description: 'product prices',
+  schema: { prices: [''] },
+  prompt: 'Extract only regular prices, ignore sale prices'
+})
+```
+
+## Extraction Best Practices
+
+### 1. Take Extraction Snapshots
+
+Always take a snapshot before extraction:
+
+```typescript
+// Take snapshot
+await opensteer.snapshot({ mode: 'extraction' })
+
+// Then extract
+const data = await opensteer.extract({
+  description: 'product data',
+  schema: { title: '', price: '' }
+})
+```
+
+### 2. Use Descriptive Names
+
+Provide clear descriptions for caching:
+
+```typescript
+// Good - descriptive
+await opensteer.extract({
+  description: 'product listing with name, price, and image',
+  schema: { /* ... */ }
+})
+
+// Bad - vague
+await opensteer.extract({
+  description: 'data',
+  schema: { /* ... */ }
+})
+```
+
+### 3. Cache All Page Types
+
+During CLI exploration, cache extraction for every page type your scraper will visit:
+
+```bash
+# List page
+opensteer snapshot extraction
+opensteer extract '{"products":[{"name":"","price":""}]}' \
+  --description "product listing"
+
+# Detail page
+opensteer click 1 --description "first product"
+opensteer snapshot extraction
+opensteer extract '{"title":"","description":"","specs":[""]}' \
+  --description "product detail page"
+```
+
+### 4. Handle Missing Data
+
+Some fields may not exist on all pages:
+
+```typescript
+const schema = {
+  title: '',
+  price: '',
+  salePrice: null,  // May not exist
+  badge: null       // May not exist
+}
+
+const data = await opensteer.extract({
+  description: 'product',
+  schema
+})
+
+// Check for null values
+if (data.salePrice !== null) {
+  console.log('On sale:', data.salePrice)
+}
+```
+
+### 5. Structure Arrays Properly
+
+For arrays, include representative items in the schema:
+
+```typescript
+// Good - shows all fields
+const schema = {
+  products: [
+    {
+      title: '',
+      price: '',
+      imageUrl: ''
+    }
+  ]
+}
+
+// OpenSteer caches the pattern and finds all matching items
+```
+
+### 6. Use Type Hints
+
+Use appropriate primitive types as defaults:
+
+```typescript
+const schema = {
+  name: '',           // String
+  price: 0,           // Number
+  inStock: true,      // Boolean
+  badge: null,        // Nullable
+  specs: [''],        // String array
+  metadata: {}        // Object
+}
+```
+
+## Debugging Extraction
+
+When extraction produces wrong or missing data:
+
+<Steps>
+  <Step title="Check timing">
+    Ensure SPA content has loaded:
+    
+    ```typescript
+    await opensteer.waitForText('Products loaded')
+    await opensteer.snapshot({ mode: 'extraction' })
+    const data = await opensteer.extract({ /* ... */ })
+    ```
+  </Step>
+
+  <Step title="Verify cache exists">
+    Make sure you cached the extraction during CLI exploration for this page type.
+  </Step>
+
+  <Step title="Handle obstacles">
+    Remove cookie banners, modals, or login walls before extraction:
+    
+    ```typescript
+    await opensteer.click({ description: 'close cookie banner' })
+    await opensteer.snapshot({ mode: 'extraction' })
+    ```
+  </Step>
+
+  <Step title="Check for missing data">
+    Some pages genuinely lack certain fields. Use null defaults and handle missing data:
+    
+    ```typescript
+    const schema = { optional: null }
+    const data = await opensteer.extract({ schema })
+    if (data.optional === null) {
+      console.log('Field not found on page')
+    }
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+Do NOT replace `opensteer.extract()` with `page.evaluate()` + `querySelectorAll` when debugging. Fix timing, caching, or obstacles instead.
+</Warning>
+
+## Extraction vs Manual Parsing
+
+<CardGroup cols={2}>
+  <Card title="OpenSteer Extraction" icon="check">
+    - AI-powered element detection
+    - Automatic path caching
+    - Works across page structure changes
+    - Deterministic replay
+    - Type-safe schemas
+  </Card>
+  <Card title="Manual Parsing" icon="xmark">
+    - Brittle CSS selectors
+    - No caching
+    - Breaks on DOM changes
+    - Requires maintenance
+    - Error-prone
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browser Automation" icon="browser" href="/guides/browser-automation">
+    Learn core automation features and navigation
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    Integrate extraction with AI agent workflows
+  </Card>
+  <Card title="Cloud Integration" icon="cloud" href="/guides/cloud-integration">
+    Scale extraction with cloud mode
+  </Card>
+  <Card title="Skills" icon="puzzle-piece" href="/guides/skills">
+    Install OpenSteer skills for AI assistants
+  </Card>
+</CardGroup>

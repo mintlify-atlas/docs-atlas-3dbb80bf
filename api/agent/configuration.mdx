@@ -1,0 +1,248 @@
+---
+title: 'agent()'
+description: 'Configure Computer Use Agents for browser automation'
+icon: 'gear'
+---
+
+## Method Signature
+
+```typescript
+browser.agent(config: OpensteerAgentConfig): OpensteerAgentInstance
+```
+
+Create an agent instance for autonomous browser control using AI models with computer use capabilities.
+
+## Configuration
+
+<ParamField path="mode" type="OpensteerAgentMode" required>
+  Agent mode. Currently only `'cua'` (Computer Use Agent) is supported.
+</ParamField>
+
+<ParamField path="model" type="string | OpensteerAgentModelConfig">
+  Model configuration. Can be a model string in `provider/model` format or a detailed configuration object.
+  
+  **String format:** `'provider/model'`
+  
+  Examples:
+  - `'openai/computer-use-preview'`
+  - `'anthropic/claude-3-5-sonnet-20241022'`
+  - `'google/gemini-2.0-flash-exp'`
+  
+  **Object format:** See [Model Configuration](#model-configuration) below.
+</ParamField>
+
+<ParamField path="systemPrompt" type="string">
+  Custom system prompt to guide agent behavior. Defaults to:
+  
+  ```
+  You are a browser automation agent. Complete the user instruction 
+  safely and efficiently. Do not ask follow-up questions. Finish 
+  as soon as the task is complete.
+  ```
+</ParamField>
+
+<ParamField path="waitBetweenActionsMs" type="number" default={500}>
+  Milliseconds to wait between agent actions. Must be a non-negative number. Set to `0` for no delay.
+</ParamField>
+
+## Model Configuration
+
+When using the object format for `model`, provide an `OpensteerAgentModelConfig`:
+
+<ParamField path="modelName" type="string" required>
+  Model name in `provider/model` format. Must include a slash separator.
+  
+  Examples:
+  - `'openai/computer-use-preview'`
+  - `'anthropic/claude-3-5-sonnet-20241022'`
+  - `'google/gemini-2.0-flash-exp'`
+</ParamField>
+
+<ParamField path="apiKey" type="string">
+  API key for the provider. If not provided, reads from environment variables:
+  
+  - **OpenAI:** `OPENAI_API_KEY`
+  - **Anthropic:** `ANTHROPIC_API_KEY`
+  - **Google:** `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_API_KEY`, or `GOOGLE_API_KEY`
+</ParamField>
+
+<ParamField path="baseUrl" type="string">
+  Custom base URL for the provider API. Useful for proxies or compatible services.
+</ParamField>
+
+<ParamField path="organization" type="string">
+  Organization ID for OpenAI (if applicable).
+</ParamField>
+
+<ParamField path="thinkingBudget" type="number">
+  Thinking budget for OpenAI extended reasoning models. Controls the amount of reasoning tokens allocated.
+</ParamField>
+
+<ParamField path="environment" type="string">
+  Environment identifier for Google models (provider-specific configuration).
+</ParamField>
+
+## Return Value
+
+Returns an `OpensteerAgentInstance` with:
+
+<ResponseField name="execute" type="function" required>
+  Execute method for running agent tasks. See [execute()](/api/agent/execute) for details.
+  
+  ```typescript
+  execute(instructionOrOptions: string | OpensteerAgentExecuteOptions): Promise<OpensteerAgentResult>
+  ```
+</ResponseField>
+
+## Examples
+
+### Simple String Model
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const browser = new Opensteer()
+await browser.launch()
+
+const agent = browser.agent({
+  mode: 'cua',
+  model: 'openai/computer-use-preview'
+})
+
+const result = await agent.execute('Navigate to the pricing page')
+await browser.close()
+```
+
+### OpenAI with Custom Configuration
+
+```typescript
+const agent = browser.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'openai/computer-use-preview',
+    apiKey: process.env.OPENAI_API_KEY,
+    organization: 'org-123456',
+    thinkingBudget: 10000
+  },
+  systemPrompt: 'You are a precise automation agent. Always verify actions before executing.',
+  waitBetweenActionsMs: 1000
+})
+```
+
+### Anthropic Configuration
+
+```typescript
+const agent = browser.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'anthropic/claude-3-5-sonnet-20241022',
+    apiKey: process.env.ANTHROPIC_API_KEY
+  },
+  systemPrompt: 'Complete tasks efficiently with minimal steps.',
+  waitBetweenActionsMs: 500
+})
+
+const result = await agent.execute('Search for documentation')
+console.log('Provider:', result.provider) // 'anthropic'
+console.log('Model:', result.model) // 'anthropic/claude-3-5-sonnet-20241022'
+```
+
+### Google Gemini Configuration
+
+```typescript
+const agent = browser.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'google/gemini-2.0-flash-exp',
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    environment: 'production'
+  },
+  waitBetweenActionsMs: 300
+})
+```
+
+### Custom Base URL (Proxy or Compatible Service)
+
+```typescript
+const agent = browser.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'openai/computer-use-preview',
+    apiKey: process.env.CUSTOM_API_KEY,
+    baseUrl: 'https://custom-proxy.example.com/v1'
+  }
+})
+```
+
+### Using Environment Variables Only
+
+```typescript
+// Set environment variables:
+// export OPENAI_API_KEY=sk-...
+
+const agent = browser.agent({
+  mode: 'cua',
+  model: 'openai/computer-use-preview'
+  // API key read automatically from OPENAI_API_KEY
+})
+```
+
+### No Wait Between Actions
+
+```typescript
+const agent = browser.agent({
+  mode: 'cua',
+  model: 'anthropic/claude-3-5-sonnet-20241022',
+  waitBetweenActionsMs: 0 // Execute actions as fast as possible
+})
+```
+
+## Provider-Specific Notes
+
+### OpenAI
+
+- Requires `OPENAI_API_KEY` environment variable or `apiKey` in config
+- Supports `organization` for team/org accounts
+- Extended reasoning models support `thinkingBudget` parameter
+- Model example: `'openai/computer-use-preview'`
+
+### Anthropic
+
+- Requires `ANTHROPIC_API_KEY` environment variable or `apiKey` in config
+- Claude models with computer use capabilities
+- Model example: `'anthropic/claude-3-5-sonnet-20241022'`
+
+### Google
+
+- Requires `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_API_KEY`, or `GOOGLE_API_KEY`
+- Supports `environment` parameter for environment-specific configuration
+- Gemini models with multimodal capabilities
+- Model example: `'google/gemini-2.0-flash-exp'`
+
+## Error Handling
+
+Configuration errors throw specific error types:
+
+```typescript
+try {
+  const agent = browser.agent({
+    mode: 'cua',
+    model: 'invalid-provider/model'
+  })
+} catch (error) {
+  if (error.name === 'OpensteerAgentProviderError') {
+    console.error('Unsupported provider')
+  } else if (error.name === 'OpensteerAgentConfigError') {
+    console.error('Configuration error:', error.message)
+  }
+}
+```
+
+## Notes
+
+- Only one agent execution can run at a time per agent instance
+- Agent instances are tied to the browser instance they're created from
+- Model format must always be `provider/model` with a forward slash
+- API keys are required either via config or environment variables
+- The system prompt significantly affects agent behavior and decision-making
+- Higher `waitBetweenActionsMs` values improve reliability but slow execution

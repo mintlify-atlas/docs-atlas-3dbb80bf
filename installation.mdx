@@ -1,0 +1,154 @@
+---
+title: Installation
+description: Install and configure OpenSteer for browser automation
+---
+
+# Installation
+
+Get started with OpenSteer by installing the CLI and SDK packages.
+
+## Requirements
+
+Before installing OpenSteer, ensure you have:
+
+- **Node.js** `>=20`
+- **Playwright-supported browser runtime** (Chromium, Firefox, or WebKit)
+- **Model provider API key** for LLM-powered resolution/extraction/CUA (optional for basic features)
+
+## Global CLI Installation (Recommended)
+
+<Steps>
+  <Step title="Install the CLI globally">
+    Install OpenSteer CLI and make it available system-wide:
+
+    ```bash
+    npm i -g opensteer
+    ```
+  </Step>
+
+  <Step title="Install skill packs">
+    Install first-party skill packs for AI agent integration:
+
+    ```bash
+    opensteer skills install
+    ```
+
+    This installs the OpenSteer skill pack that provides agent workflows and best practices.
+  </Step>
+
+  <Step title="Verify installation">
+    Check that OpenSteer is installed correctly:
+
+    ```bash
+    opensteer --version
+    ```
+  </Step>
+</Steps>
+
+## SDK Package Installation
+
+When importing `Opensteer` in your application code, install the SDK package:
+
+<CodeGroup>
+
+```bash npm
+npm install opensteer
+```
+
+```bash pnpm
+pnpm add opensteer
+```
+
+```bash bun
+bun add opensteer
+```
+
+</CodeGroup>
+
+## Browser Binary Installation
+
+If you don't have Playwright browser binaries installed, install Chromium:
+
+```bash
+npx playwright install chromium
+```
+
+<Info>
+OpenSteer uses Playwright under the hood, so any Playwright-supported browser (Chromium, Firefox, WebKit) will work.
+</Info>
+
+## Environment Setup
+
+### API Keys for LLM Features
+
+To use descriptor-based selectors, structured extraction, or CUA agents, configure your model provider API key:
+
+<CodeGroup>
+
+```bash OpenAI
+export OPENAI_API_KEY="your-api-key-here"
+```
+
+```bash Anthropic
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
+
+```bash Google
+export GOOGLE_API_KEY="your-api-key-here"
+```
+
+</CodeGroup>
+
+<Tip>
+You can also use a `.env` file in your project root. OpenSteer automatically loads environment variables using dotenv.
+</Tip>
+
+### Cloud Mode Configuration
+
+To use OpenSteer in cloud mode, set the following environment variables:
+
+```bash
+export OPENSTEER_MODE=cloud
+export OPENSTEER_API_KEY="your-opensteer-api-key"
+```
+
+<Info>
+Cloud mode is optional. OpenSteer defaults to local mode. See the Cloud Integration guide for more details.
+</Info>
+
+Optional cloud configuration:
+
+```bash
+# Override the default cloud host
+export OPENSTEER_BASE_URL="https://your-cloud-host.com"
+
+# Set authentication scheme (api-key or bearer)
+export OPENSTEER_AUTH_SCHEME="api-key"
+```
+
+## Session Management
+
+For non-interactive CLI runs, you can set session identifiers via environment variables:
+
+```bash
+export OPENSTEER_SESSION="my-session-id"
+# or
+export OPENSTEER_CLIENT_ID="my-client-id"
+```
+
+## Verification
+
+Verify your installation by running a quick test:
+
+```bash
+opensteer open https://example.com --session test
+opensteer close --session test
+```
+
+If the browser opens and closes successfully, you're ready to start automating!
+
+## Next Steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Learn how to write your first automation script
+</Card>

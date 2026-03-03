@@ -1,0 +1,140 @@
+---
+title: 'Cookie Management'
+description: 'Manage browser cookies with export and import functionality'
+---
+
+## Overview
+
+OpenSteer provides methods to export and import browser cookies. These methods allow you to save cookies to a file and restore them later.
+
+<Note>
+  Cookie export and import methods are **local-only features**. They are not supported in cloud mode because they depend on local filesystem paths.
+</Note>
+
+## Methods
+
+### exportCookies
+
+Exports cookies from the browser context to a JSON file.
+
+```typescript
+await opensteer.exportCookies(filePath: string, url?: string): Promise<void>
+```
+
+<ParamField path="filePath" type="string" required>
+  Path to the file where cookies will be saved
+</ParamField>
+
+<ParamField path="url" type="string">
+  Optional URL to filter cookies. If provided, only cookies for this URL will be exported
+</ParamField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+// Navigate to a site
+await opensteer.goto('https://example.com')
+
+// Export all cookies
+await opensteer.exportCookies('./cookies.json')
+
+// Export cookies for specific URL
+await opensteer.exportCookies('./example-cookies.json', 'https://example.com')
+
+await opensteer.close()
+```
+
+### importCookies
+
+Imports cookies from a JSON file into the browser context.
+
+```typescript
+await opensteer.importCookies(filePath: string): Promise<void>
+```
+
+<ParamField path="filePath" type="string" required>
+  Path to the JSON file containing cookies to import
+</ParamField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+// Import previously saved cookies
+await opensteer.importCookies('./cookies.json')
+
+// Navigate to site with restored cookies
+await opensteer.goto('https://example.com')
+
+await opensteer.close()
+```
+
+## CookieParam Type
+
+Cookies are represented using the `CookieParam` type:
+
+```typescript
+interface CookieParam {
+  name: string
+  value: string
+  url?: string
+  domain?: string
+  path?: string
+  expires?: number
+  httpOnly?: boolean
+  secure?: boolean
+  sameSite?: 'Strict' | 'Lax' | 'None'
+}
+```
+
+<ResponseField name="name" type="string" required>
+  Cookie name
+</ResponseField>
+
+<ResponseField name="value" type="string" required>
+  Cookie value
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  URL associated with the cookie
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+  Cookie domain
+</ResponseField>
+
+<ResponseField name="path" type="string">
+  Cookie path
+</ResponseField>
+
+<ResponseField name="expires" type="number">
+  Expiration timestamp (Unix time in seconds)
+</ResponseField>
+
+<ResponseField name="httpOnly" type="boolean">
+  Whether the cookie is HTTP-only
+</ResponseField>
+
+<ResponseField name="secure" type="boolean">
+  Whether the cookie requires a secure connection
+</ResponseField>
+
+<ResponseField name="sameSite" type="'Strict' | 'Lax' | 'None'">
+  SameSite policy for the cookie
+</ResponseField>
+
+## Related Methods
+
+## Related methods
+
+- [state()](/api/utilities/state) - Get current page state
+- [Cloud sessions](/api/cloud/sessions) - Session management in cloud mode

@@ -1,0 +1,129 @@
+---
+title: 'Agent Overview'
+description: 'Computer Use Agent (CUA) support in OpenSteer'
+icon: 'robot'
+---
+
+## Computer Use Agent (CUA)
+
+OpenSteer supports Computer Use Agents (CUA) that can autonomously control browsers by interpreting screenshots and executing actions. The agent workflow enables AI models to complete complex browser tasks through natural language instructions.
+
+## Supported Providers
+
+OpenSteer supports CUA from three major providers:
+
+- **OpenAI** - Computer Use Preview models
+- **Anthropic** - Claude models with computer use capabilities
+- **Google** - Gemini models with multimodal capabilities
+
+## Agent Workflow
+
+1. **Initialization**: Configure the agent with a model, system prompt, and execution parameters
+2. **Screenshot Capture**: Agent captures the current browser viewport as a PNG screenshot
+3. **Reasoning**: AI model analyzes the screenshot and decides on the next action
+4. **Action Execution**: Agent executes browser actions (click, input, scroll, navigation, etc.)
+5. **Iteration**: Process repeats until task completion or max steps reached
+6. **Result**: Returns success status, completion flag, message, actions taken, and usage metrics
+
+## Agent Capabilities
+
+The CUA can perform various browser actions:
+
+- **Click** - Click at specific coordinates or with modifiers
+- **Type** - Enter text into inputs
+- **Scroll** - Scroll viewport or specific elements
+- **Navigate** - Go to URLs
+- **Wait** - Pause execution
+- **Screenshot** - Capture viewport state
+- **Finish** - Complete task execution
+
+## When to Use Agents
+
+### Use Agents When:
+
+- Automating complex multi-step workflows
+- Handling dynamic UIs that change frequently
+- Exploring unfamiliar websites or applications
+- Tasks require visual interpretation (images, layouts, colors)
+- You want natural language task definitions
+
+### Use Direct Actions When:
+
+- You know exact selectors or element paths
+- Performance is critical (agents are slower)
+- Deterministic execution is required
+- Working with well-structured, stable UIs
+- Cost optimization is important (agents use more tokens)
+
+## Configuration
+
+Agents are configured through the `agent()` method with mode, model, and optional parameters:
+
+```typescript
+const agentInstance = browser.agent({
+  mode: 'cua',
+  model: 'openai/computer-use-preview',
+  systemPrompt: 'Custom instructions for the agent',
+  waitBetweenActionsMs: 500
+})
+```
+
+See [Configuration](/api/agent/configuration) for detailed configuration options.
+
+## Execution
+
+Execute agent tasks with the `execute()` method:
+
+```typescript
+const result = await agentInstance.execute({
+  instruction: 'Search for OpenSteer and click the first result',
+  maxSteps: 20,
+  highlightCursor: true
+})
+
+if (result.success && result.completed) {
+  console.log('Task completed:', result.message)
+  console.log('Actions taken:', result.actions.length)
+}
+```
+
+See [Execute](/api/agent/execute) for execution details and result types.
+
+## Model Format
+
+Models are specified using the `provider/model` format:
+
+```typescript
+// OpenAI
+model: 'openai/computer-use-preview'
+
+// Anthropic
+model: 'anthropic/claude-3-5-sonnet-20241022'
+
+// Google
+model: 'google/gemini-2.0-flash-exp'
+```
+
+## Error Handling
+
+Agent execution can fail for various reasons:
+
+- Model API errors (rate limits, authentication)
+- Invalid actions or coordinates
+- Max steps reached before completion
+- Page navigation failures
+
+Always check `result.success` and handle failures appropriately:
+
+```typescript
+const result = await agentInstance.execute('Complete the form')
+
+if (!result.success) {
+  console.error('Agent failed:', result.message)
+  console.log('Actions before failure:', result.actions)
+}
+
+if (result.success && !result.completed) {
+  console.warn('Agent stopped before completion (max steps reached)')
+}
+```

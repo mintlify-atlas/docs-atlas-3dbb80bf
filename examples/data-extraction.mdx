@@ -1,0 +1,269 @@
+---
+title: Data Extraction
+description: Extract structured data from web pages using OpenSteer's schema-based extraction
+---
+
+OpenSteer makes it easy to extract structured data from web pages using natural language descriptions and typed schemas.
+
+## Complete Example
+
+```typescript
+import { Opensteer } from "opensteer";
+
+async function run() {
+  const opensteer = new Opensteer({
+    name: "product-extraction",
+    model: "gpt-5.1",
+  });
+
+  await opensteer.launch({ headless: false });
+
+  try {
+    await opensteer.goto(
+      "https://kbdfans.com/search?type=product%2Cquery&options%5Bprefix%5D=last&q=tactile+switches",
+    );
+
+    console.log("Starting extraction...");
+    const data = await opensteer.extract({
+      description:
+        "Extract the main product cards with title, price, image url, and url",
+      schema: {
+        products: [
+          {
+            title: "",
+            price: "",
+            imageUrl: "",
+            url: "",
+          },
+        ],
+      },
+    });
+
+    console.log(data);
+  } finally {
+    await opensteer.close();
+  }
+}
+
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+```
+
+## Extraction Workflow
+
+### 1. Configure the Model
+
+```typescript
+const opensteer = new Opensteer({
+  name: "product-extraction",
+  model: "gpt-5.1",
+});
+```
+
+Specify the LLM model to use for extraction. OpenSteer defaults to `gpt-5.1`, but you can use:
+- `gpt-5.1` (default)
+- `gpt-5-mini`
+- Any model supported by your provider
+
+You can also set the model via environment variable:
+
+```bash
+OPENSTEER_MODEL=gpt-5-mini
+```
+
+### 2. Navigate to the Target Page
+
+```typescript
+await opensteer.goto(
+  "https://kbdfans.com/search?type=product%2Cquery&options%5Bprefix%5D=last&q=tactile+switches",
+);
+```
+
+Navigate to the page containing the data you want to extract.
+
+### 3. Define Your Schema
+
+```typescript
+schema: {
+  products: [
+    {
+      title: "",
+      price: "",
+      imageUrl: "",
+      url: "",
+    },
+  ],
+}
+```
+
+Define the structure of the data you want to extract. The schema:
+- Uses empty strings as type placeholders for string fields
+- Supports arrays with `[{ ... }]` notation
+- Can include nested objects
+- Guides the LLM to extract data in the exact format you need
+
+### 4. Extract with Description
+
+```typescript
+const data = await opensteer.extract({
+  description:
+    "Extract the main product cards with title, price, image url, and url",
+  schema: {
+    products: [
+      {
+        title: "",
+        price: "",
+        imageUrl: "",
+        url: "",
+      },
+    ],
+  },
+});
+```
+
+The `description` parameter tells the LLM:
+- What to look for on the page
+- Which elements to focus on
+- Any specific instructions about the extraction
+
+The LLM returns data matching your schema structure:
+
+```json
+{
+  "products": [
+    {
+      "title": "Gateron Yellow Switches",
+      "price": "$3.50",
+      "imageUrl": "https://...",
+      "url": "https://..."
+    },
+    {
+      "title": "Durock T1 Tactile Switches",
+      "price": "$6.00",
+      "imageUrl": "https://...",
+      "url": "https://..."
+    }
+  ]
+}
+```
+
+## Advanced Schema Patterns
+
+### Single Object
+
+```typescript
+const data = await opensteer.extract({
+  description: "Extract the hero section information",
+  schema: {
+    title: "",
+    subtitle: "",
+    ctaText: "",
+    ctaHref: "",
+  },
+});
+```
+
+### Nested Objects
+
+```typescript
+const data = await opensteer.extract({
+  description: "Extract article with author details",
+  schema: {
+    title: "",
+    content: "",
+    author: {
+      name: "",
+      bio: "",
+      avatar: "",
+    },
+  },
+});
+```
+
+### Arrays of Primitives
+
+```typescript
+const data = await opensteer.extract({
+  description: "Extract all category names",
+  schema: {
+    categories: [""],
+  },
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Take a snapshot before extraction">
+    For AI agent workflows, always take an extraction snapshot first:
+    
+    ```typescript
+    await opensteer.snapshot({ mode: "extraction" });
+    const data = await opensteer.extract({ ... });
+    ```
+    
+    This provides the LLM with optimized HTML for better extraction results.
+  </Accordion>
+
+  <Accordion title="Be specific in descriptions">
+    Clear descriptions lead to better extraction:
+    
+    ```typescript
+    // Good
+    description: "Extract the main product cards with title, price, and image"
+    
+    // Less specific
+    description: "Extract products"
+    ```
+  </Accordion>
+
+  <Accordion title="Match schema to actual data structure">
+    Your schema should reflect the actual structure on the page. If there are multiple items, use arrays. If there's a single element, use an object.
+  </Accordion>
+
+  <Accordion title="Handle extraction errors gracefully">
+    Always wrap extraction in try/catch and close resources:
+    
+    ```typescript
+    try {
+      const data = await opensteer.extract({ ... });
+      console.log(data);
+    } catch (error) {
+      console.error("Extraction failed:", error);
+    } finally {
+      await opensteer.close();
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Running the Example
+
+Make sure you have an API key configured for your model provider:
+
+```bash
+# For OpenAI
+export OPENAI_API_KEY=your_key_here
+
+# For Anthropic
+export ANTHROPIC_API_KEY=your_key_here
+```
+
+Run the example:
+
+```bash
+node data-extraction.js
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Form Filling" icon="file-lines" href="/examples/form-filling">
+    Learn how to fill out and submit forms
+  </Card>
+  <Card title="AI Integration" icon="brain" href="/examples/ai-integration">
+    Build AI agents with OpenSteer
+  </Card>
+</CardGroup>

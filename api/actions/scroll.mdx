@@ -1,0 +1,200 @@
+---
+title: scroll
+description: Scroll the page or specific elements in any direction
+---
+
+## Method Signature
+
+```typescript
+await opensteer.scroll(options?: ScrollOptions): Promise<ActionResult>
+```
+
+Scrolls the page or a specific element. If no element is specified, scrolls the entire page.
+
+## Parameters
+
+<ParamField path="options" type="ScrollOptions">
+  Configuration for the scroll action. Optional - defaults to scrolling the page down by 600 pixels.
+  
+  <Expandable title="ScrollOptions properties">
+    <ParamField path="direction" type="'up' | 'down' | 'left' | 'right'" default="'down'">
+      Direction to scroll.
+    </ParamField>
+    
+    <ParamField path="amount" type="number" default="600">
+      Number of pixels to scroll. Negative values are converted to absolute.
+    </ParamField>
+    
+    <ParamField path="description" type="string">
+      Natural language description of the element to scroll. If not provided, scrolls the entire page.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact element to scroll.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the element to scroll.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("scroll")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Scroll Page Down
+
+```typescript
+// Scroll the page down by default amount (600px)
+await opensteer.scroll()
+
+// Or explicitly specify
+await opensteer.scroll({
+  direction: 'down'
+})
+```
+
+### Scroll Page Up
+
+```typescript
+// Scroll the page up
+await opensteer.scroll({
+  direction: 'up'
+})
+```
+
+### Scroll Custom Amount
+
+```typescript
+// Scroll down by 1000 pixels
+await opensteer.scroll({
+  direction: 'down',
+  amount: 1000
+})
+```
+
+### Scroll Horizontal
+
+```typescript
+// Scroll right
+await opensteer.scroll({
+  direction: 'right',
+  amount: 500
+})
+
+// Scroll left
+await opensteer.scroll({
+  direction: 'left',
+  amount: 500
+})
+```
+
+### Scroll Specific Element
+
+```typescript
+// Scroll a scrollable container
+await opensteer.scroll({
+  description: 'Chat messages container',
+  direction: 'down',
+  amount: 300
+})
+```
+
+### Scroll with Selector
+
+```typescript
+// Scroll element using CSS selector
+await opensteer.scroll({
+  selector: '.sidebar',
+  description: 'Sidebar',
+  direction: 'down'
+})
+```
+
+### Scroll to Load More Content
+
+```typescript
+// Infinite scroll pattern
+for (let i = 0; i < 5; i++) {
+  await opensteer.scroll({
+    direction: 'down',
+    amount: 1000
+  })
+  
+  // Wait for content to load
+  await new Promise(resolve => setTimeout(resolve, 1000))
+}
+```
+
+### Scroll Element into View
+
+```typescript
+// Scroll sidebar to reveal element
+await opensteer.scroll({
+  description: 'Navigation sidebar',
+  direction: 'down',
+  amount: 400
+})
+
+// Then interact with revealed element
+await opensteer.click({
+  description: 'Settings link'
+})
+```
+
+### Scroll with Element Counter
+
+```typescript
+// Use element counter from snapshot
+await opensteer.scroll({
+  element: 35,
+  description: 'Results container',
+  direction: 'down',
+  amount: 500
+})
+```
+
+## Important Notes
+
+<Info>
+  When no `description`, `element`, or `selector` is provided, the entire page is scrolled. This is useful for general page navigation.
+</Info>
+
+<Tip>
+  The default scroll amount is 600 pixels, which typically moves the viewport by about one screen height on most displays.
+</Tip>
+
+## Related methods
+
+- [click](/api/actions/click) - Click on elements (may auto-scroll to element)
+- [hover](/api/actions/hover) - Hover over elements
+- [snapshot](/api/extraction/snapshot) - Capture page content after scrolling

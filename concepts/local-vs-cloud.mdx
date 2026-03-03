@@ -1,0 +1,456 @@
+---
+title: Local vs Cloud Execution
+description: Understanding the differences between local and cloud execution modes in OpenSteer
+---
+
+OpenSteer provides a unified API that works seamlessly in both local and cloud execution modes. By default, OpenSteer runs in local mode, executing browser automation directly on your machine. Cloud mode allows you to offload execution to remote infrastructure.
+
+## Default: Local Mode
+
+Without any configuration, OpenSteer runs in local mode:
+
+```typescript
+import { Opensteer } from 'opensteer';
+
+const opensteer = new Opensteer({ name: 'my-app' });
+
+// Runs locally on your machine
+await opensteer.launch();
+await opensteer.goto('https://example.com');
+```
+
+**Local mode characteristics:**
+- Browser runs on your machine
+- Full access to filesystem (cookies, file uploads)
+- Uses local Playwright browser binaries
+- No network latency for browser commands
+- Free (no cloud API costs)
+
+## Enabling Cloud Mode
+
+Enable cloud mode using environment variables or constructor options.
+
+### Environment Variables
+
+Set these environment variables to enable cloud mode:
+
+<CodeGroup>
+
+```bash .env
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key_here
+OPENSTEER_AUTH_SCHEME=api-key
+```
+
+```bash .env with custom host
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key_here
+OPENSTEER_BASE_URL=https://custom.opensteer.com
+OPENSTEER_AUTH_SCHEME=api-key
+```
+
+```bash CLI
+export OPENSTEER_MODE=cloud
+export OPENSTEER_API_KEY=ork_your_key_here
+export OPENSTEER_AUTH_SCHEME=api-key
+
+node my-script.js
+```
+
+</CodeGroup>
+
+### Constructor Configuration
+
+You can also configure cloud mode directly in code:
+
+<CodeGroup>
+
+```typescript Boolean flag
+import { Opensteer } from 'opensteer';
+
+const opensteer = new Opensteer({
+  name: 'my-app',
+  cloud: true  // Enables cloud mode with env vars
+});
+```
+
+```typescript Full configuration
+import { Opensteer } from 'opensteer';
+
+const opensteer = new Opensteer({
+  name: 'my-app',
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY,
+    baseUrl: 'https://api.opensteer.com',
+    authScheme: 'api-key',  // or 'bearer'
+    announce: 'always'      // 'always', 'off', or 'tty'
+  }
+});
+```
+
+```typescript With bearer auth
+import { Opensteer } from 'opensteer';
+
+const opensteer = new Opensteer({
+  name: 'my-app',
+  cloud: {
+    apiKey: process.env.BEARER_TOKEN,
+    authScheme: 'bearer'
+  }
+});
+```
+
+</CodeGroup>
+
+<Info>
+  Constructor `cloud` options override the `OPENSTEER_MODE` environment variable.
+</Info>
+
+## Configuration Options
+
+### Environment Variables
+
+<ParamField path="OPENSTEER_MODE" type="string" default="local">
+  Execution mode: `local` or `cloud`
+</ParamField>
+
+<ParamField path="OPENSTEER_API_KEY" type="string" required>
+  Your OpenSteer API key (required for cloud mode)
+</ParamField>
+
+<ParamField path="OPENSTEER_BASE_URL" type="string" default="https://api.opensteer.com">
+  Override the default cloud host URL
+</ParamField>
+
+<ParamField path="OPENSTEER_AUTH_SCHEME" type="string" default="api-key">
+  Authentication scheme: `api-key` or `bearer`
+</ParamField>
+
+<ParamField path="OPENSTEER_REMOTE_ANNOUNCE" type="string" default="always">
+  Cloud announcement policy: `always`, `off`, or `tty`
+  - `always`: Always announce cloud session URLs
+  - `off`: Never announce
+  - `tty`: Only announce when running in a TTY
+</ParamField>
+
+<ParamField path="OPENSTEER_DISABLE_DOTENV_AUTOLOAD" type="boolean" default="false">
+  Disable automatic `.env` file loading
+</ParamField>
+
+### Constructor Options
+
+<ParamField path="cloud" type="boolean | CloudOptions">
+  Enable cloud mode or provide detailed cloud configuration
+  
+  **CloudOptions:**
+  - `apiKey` (string): API key for authentication
+  - `baseUrl` (string): Custom cloud host URL
+  - `authScheme` ('api-key' | 'bearer'): Authentication scheme
+  - `announce` ('always' | 'off' | 'tty'): Announcement policy
+</ParamField>
+
+## Environment File Loading
+
+OpenSteer automatically loads `.env` files in the following order:
+
+1. `.env.<NODE_ENV>.local` (e.g., `.env.production.local`)
+2. `.env.local` (skipped when `NODE_ENV=test`)
+3. `.env.<NODE_ENV>` (e.g., `.env.production`)
+4. `.env`
+
+Files are loaded from your `storage.rootDir` (default: `process.cwd()`). Existing `process.env` values are **not** overwritten.
+
+```typescript
+// Disable auto-loading if needed
+process.env.OPENSTEER_DISABLE_DOTENV_AUTOLOAD = 'true';
+```
+
+## Key Differences
+
+### Local-Only Features
+
+These features are **only available in local mode**:
+
+<CardGroup cols={2}>
+  <Card title="Opensteer.from(page)" icon="file-import">
+    Wrap an existing Playwright page instance
+  </Card>
+  <Card title="uploadFile()" icon="upload">
+    Upload files from local filesystem
+  </Card>
+  <Card title="exportCookies()" icon="cookie">
+    Export cookies to local JSON file
+  </Card>
+  <Card title="importCookies()" icon="cookie-bite">
+    Import cookies from local JSON file
+  </Card>
+</CardGroup>
+
+<CodeGroup>
+
+```typescript Opensteer.from() - Local Only
+import { chromium } from 'playwright';
+import { Opensteer } from 'opensteer';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+
+// Wrap existing page (local only)
+const opensteer = Opensteer.from(page, { name: 'my-app' });
+```
+
+```typescript uploadFile() - Local Only
+// Upload files (local only)
+await opensteer.uploadFile({
+  description: 'file input',
+  paths: ['/path/to/file.pdf']
+});
+```
+
+```typescript Cookie Management - Local Only
+// Export cookies (local only)
+await opensteer.exportCookies('/path/to/cookies.json');
+
+// Import cookies (local only)
+await opensteer.importCookies('/path/to/cookies.json');
+```
+
+</CodeGroup>
+
+<Warning>
+  Attempting to use these features in cloud mode will result in an error.
+</Warning>
+
+### Cloud Session Management
+
+In cloud mode, OpenSteer manages remote browser sessions:
+
+<CodeGroup>
+
+```typescript Session Creation
+import { Opensteer } from 'opensteer';
+
+const opensteer = new Opensteer({
+  name: 'my-app',
+  cloud: true
+});
+
+// Creates cloud session
+await opensteer.launch();
+
+// Get cloud session details
+const sessionId = opensteer.getCloudSessionId();
+const sessionUrl = opensteer.getCloudSessionUrl();
+
+console.log('Cloud session:', sessionUrl);
+```
+
+```typescript Session Metadata
+// After launch(), access cloud session info
+const sessionId = opensteer.getCloudSessionId();
+const sessionUrl = opensteer.getCloudSessionUrl();
+
+// Use for debugging or logging
+console.log(`View session: ${sessionUrl}`);
+```
+
+</CodeGroup>
+
+<Info>
+  Cloud sessions include `cloudSessionUrl` for deep linking to remote browser instances.
+</Info>
+
+### CUA Agent Support
+
+Computer Use Agent (CUA) mode is supported in both local and cloud execution:
+
+<CodeGroup>
+
+```typescript Local CUA
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview'
+});
+
+await opensteer.launch();
+const agent = opensteer.agent({ mode: 'cua' });
+
+const result = await agent.execute({
+  instruction: 'Go to Hacker News and open the top story',
+  maxSteps: 20
+});
+```
+
+```typescript Cloud CUA
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview',
+  cloud: true
+});
+
+await opensteer.launch();
+const agent = opensteer.agent({ mode: 'cua' });
+
+// CUA actions execute against cloud CDP page
+const result = await agent.execute({
+  instruction: 'Go to Hacker News and open the top story',
+  maxSteps: 20
+});
+```
+
+</CodeGroup>
+
+## Cloud API Contract
+
+Cloud mode uses a strict v3 contract with the following endpoints:
+
+### Control API
+
+<CodeGroup>
+
+```http Session Management
+POST /sessions
+GET /sessions/:sessionId
+DELETE /sessions/:sessionId
+```
+
+```http Selector Cache
+POST /selector-cache/import
+```
+
+</CodeGroup>
+
+### Session Creation
+
+`POST /sessions` requires:
+
+```json
+{
+  "cloudSessionContractVersion": "v3",
+  "sourceType": "local-cloud",
+  "clientSessionHint": "string",
+  "localRunId": "string"
+}
+```
+
+Response includes:
+
+```json
+{
+  "cloudSession": {
+    "id": "session_123",
+    "status": "active"
+  },
+  "cloudSessionUrl": "https://app.opensteer.com/sessions/session_123"
+}
+```
+
+### WebSocket Endpoints
+
+<CodeGroup>
+
+```text Action WebSocket
+ws://api.opensteer.com/ws/action/:sessionId
+```
+
+```text CDP WebSocket
+ws://api.opensteer.com/ws/cdp/:sessionId
+```
+
+</CodeGroup>
+
+## Fail-Fast Behavior
+
+<Warning>
+  Cloud mode is fail-fast and does **not** automatically fall back to local mode if cloud connectivity fails.
+</Warning>
+
+If cloud mode is configured but unavailable:
+
+```typescript
+const opensteer = new Opensteer({ cloud: true });
+
+try {
+  await opensteer.launch();
+} catch (error) {
+  // Error: Unable to connect to cloud service
+  // Does NOT fall back to local mode
+  console.error('Cloud session failed:', error);
+}
+```
+
+To implement fallback behavior manually:
+
+```typescript
+let opensteer;
+
+try {
+  opensteer = new Opensteer({ cloud: true });
+  await opensteer.launch();
+} catch (error) {
+  console.warn('Cloud unavailable, using local mode');
+  opensteer = new Opensteer({ cloud: false });
+  await opensteer.launch();
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use environment variables for mode selection">
+    Keep your code mode-agnostic by using environment variables:
+    
+    ```typescript
+    const opensteer = new Opensteer({
+      name: 'my-app',
+      // Mode determined by OPENSTEER_MODE env var
+    });
+    ```
+    
+    This allows switching between local and cloud without code changes.
+  </Accordion>
+  
+  <Accordion title="Avoid local-only features in shared code">
+    If your code may run in cloud mode, avoid these features:
+    
+    ```typescript
+    // Avoid in shared code
+    await opensteer.uploadFile({ ... });      // Local only
+    await opensteer.exportCookies('...');     // Local only
+    const o = Opensteer.from(page);           // Local only
+    ```
+  </Accordion>
+  
+  <Accordion title="Commit .env.example but not .env">
+    Provide an example file for team members:
+    
+    ```bash .env.example
+    OPENSTEER_MODE=cloud
+    OPENSTEER_API_KEY=ork_your_key_here
+    OPENSTEER_AUTH_SCHEME=api-key
+    ```
+    
+    Add `.env` to `.gitignore` to protect secrets.
+  </Accordion>
+  
+  <Accordion title="Use cloud mode for CI/CD pipelines">
+    Cloud mode is ideal for continuous integration:
+    
+    ```yaml GitHub Actions
+    - name: Run OpenSteer tests
+      env:
+        OPENSTEER_MODE: cloud
+        OPENSTEER_API_KEY: ${{ secrets.OPENSTEER_API_KEY }}
+      run: npm test
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Launch Options" href="/api-reference/launch">
+    Complete API reference for launch() configuration
+  </Card>
+  <Card title="CUA Agents" href="/concepts/cua-agents">
+    Learn about Computer Use Agent mode
+  </Card>
+</CardGroup>

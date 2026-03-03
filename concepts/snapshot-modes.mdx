@@ -1,0 +1,409 @@
+---
+title: Snapshot Modes
+description: Understanding OpenSteer's HTML snapshot modes and optimization strategies
+---
+
+OpenSteer's snapshot system captures and optimizes page HTML for different use cases. By selecting the appropriate snapshot mode, you can provide the AI model with the most relevant context while minimizing token usage.
+
+## Overview
+
+The snapshot pipeline performs four key steps:
+
+1. **Mark elements** - Identify interactive, hidden, and scrollable elements at runtime
+2. **Serialize HTML** - Capture the current page structure
+3. **Clean HTML** - Apply mode-specific cleaning rules to remove noise
+4. **Assign counters** - Add `c` attributes to retained elements for addressing
+
+<Note>
+  All snapshot modes return compact, LLM-friendly HTML strings optimized for token efficiency.
+</Note>
+
+## Snapshot Modes
+
+OpenSteer provides five snapshot modes, each optimized for different scenarios:
+
+### `action`
+
+Balanced context for action planning and element interaction.
+
+<CodeGroup>
+
+```typescript Usage
+await opensteer.snapshot({ mode: 'action' });
+await opensteer.click({ description: 'submit button' });
+```
+
+```typescript Options
+await opensteer.snapshot({
+  mode: 'action',
+  withCounters: true,        // Default: true
+  markInteractive: true      // Default: true
+});
+```
+
+</CodeGroup>
+
+**What's included:**
+- Interactive elements (buttons, links, inputs)
+- Semantic structure (headings, sections)
+- Navigation elements
+- Forms and form controls
+
+**What's removed:**
+- Scripts and styles
+- Hidden elements
+- Decorative content
+- Non-interactive containers
+
+**When to use:**
+- Before `click`, `input`, `hover`, `select` actions
+- For AI agents planning next steps
+- When you need element counters for targeting
+
+---
+
+### `extraction`
+
+Richer content for data extraction tasks.
+
+<CodeGroup>
+
+```typescript Usage
+await opensteer.snapshot({ mode: 'extraction' });
+const data = await opensteer.extract({
+  description: 'product listing',
+  schema: {
+    title: 'string',
+    price: 'string',
+    rating: 'number'
+  }
+});
+```
+
+```typescript Automatic Snapshot
+// extraction mode snapshot is taken automatically if not provided
+const data = await opensteer.extract({
+  description: 'product listing',
+  schema: { title: 'string' },
+  snapshot: { mode: 'extraction' }  // Optional: override default
+});
+```
+
+</CodeGroup>
+
+**What's included:**
+- Text content and structured data
+- Tables and lists
+- Images with alt text
+- Article content
+- Product information
+
+**What's removed:**
+- Scripts and styles
+- Navigation clutter
+- Ads and promotional content
+- Non-content containers
+
+**When to use:**
+- Before `extract` calls
+- For scraping structured data
+- When content matters more than interactivity
+
+---
+
+### `clickable`
+
+Clickable elements only, minimal context.
+
+<CodeGroup>
+
+```typescript Usage
+await opensteer.snapshot({ mode: 'clickable' });
+const html = await opensteer.state();
+```
+
+</CodeGroup>
+
+**What's included:**
+- Buttons
+- Links (`<a>` tags)
+- Clickable inputs
+- Interactive elements with click handlers
+
+**What's removed:**
+- All non-clickable elements
+- Static text
+- Structural containers
+
+**When to use:**
+- For click-only AI agents
+- To minimize token usage
+- When page context is unnecessary
+
+---
+
+### `scrollable`
+
+Scrollable containers only.
+
+<CodeGroup>
+
+```typescript Usage
+await opensteer.snapshot({ mode: 'scrollable' });
+await opensteer.scroll({
+  description: 'product carousel',
+  direction: 'right'
+});
+```
+
+</CodeGroup>
+
+**What's included:**
+- Elements with `overflow: scroll` or `overflow: auto`
+- Scrollable containers
+- Elements with scroll behavior
+
+**What's removed:**
+- Non-scrollable elements
+- Static content
+
+**When to use:**
+- Before `scroll` actions
+- For infinite scroll implementations
+- When identifying scrollable regions
+
+---
+
+### `full`
+
+Broad HTML with minimal cleaning.
+
+<CodeGroup>
+
+```typescript Usage
+await opensteer.snapshot({ mode: 'full' });
+const state = await opensteer.state();
+```
+
+</CodeGroup>
+
+**What's included:**
+- Complete page structure
+- All visible elements
+- Maximum context
+
+**What's removed:**
+- Scripts (for security)
+- Inline styles (for brevity)
+- Some non-semantic noise
+
+**When to use:**
+- For comprehensive page analysis
+- When you need complete DOM context
+- For debugging and inspection
+
+<Warning>
+  The `full` mode produces the largest HTML output and consumes the most tokens. Use sparingly.
+</Warning>
+
+## Snapshot Options
+
+### `withCounters`
+
+Controls whether element counters are assigned and synchronized with the live DOM.
+
+```typescript
+await opensteer.snapshot({
+  mode: 'action',
+  withCounters: true  // Default: true
+});
+
+// Now you can target elements by counter
+await opensteer.click({ element: 42 });
+```
+
+<Info>
+  Counter values (`c` attributes) are assigned fresh on every snapshot. They are synchronized between the snapshot HTML and live DOM nodes.
+</Info>
+
+### `markInteractive`
+
+Controls whether interactive elements are marked with special attributes during runtime analysis.
+
+```typescript
+await opensteer.snapshot({
+  mode: 'action',
+  markInteractive: true  // Default: true
+});
+```
+
+This option enables the cleaner to identify and preserve:
+- Clickable elements
+- Focusable elements
+- Form controls
+- Links and buttons
+
+## Counter Semantics
+
+Element counters (`c` attributes) enable precise element addressing:
+
+### Counter Assignment
+
+```html
+<!-- After snapshot with withCounters: true -->
+<button c="1">Login</button>
+<input c="2" type="text" placeholder="Email" />
+<button c="3">Sign Up</button>
+```
+
+### Counter Resolution
+
+<CodeGroup>
+
+```typescript Action Lookup (Strict)
+// Must find exactly one element
+await opensteer.click({ element: 1 });
+
+// No match -> ActionFailure: target not found
+// Multiple matches -> ActionFailure: target ambiguous
+```
+
+```typescript Extraction Lookup (Tolerant)
+const data = await opensteer.extract({
+  schema: {
+    title: { element: 1 },
+    subtitle: { element: 2 }
+  }
+});
+
+// No match -> field value is null
+// Multiple matches -> extraction fails (ambiguous)
+```
+
+</CodeGroup>
+
+<Warning>
+  Counter values are reassigned on every snapshot. Do not rely on counters persisting across multiple snapshots.
+</Warning>
+
+### Special Cases
+
+**Boundary wrappers** like `os-iframe-root` and `os-shadow-root` may be unnumbered:
+
+```html
+<os-iframe-root>
+  <button c="1">Inside iframe</button>
+</os-iframe-root>
+```
+
+**Inaccessible contexts** are not counter-addressable:
+- Inaccessible iframes (cross-origin without CORS)
+- Closed shadow roots
+
+## HTML Cleaning and Optimization
+
+The cleaning pipeline optimizes HTML for LLM consumption:
+
+### Removed Elements
+
+- `<script>` tags (all modes)
+- `<style>` tags (all modes)
+- Hidden elements (`display: none`, `visibility: hidden`)
+- Empty containers with no interactive children
+- Redundant wrapper `<div>` elements
+
+### Optimized Attributes
+
+- Removes `style` attributes (inline styles)
+- Preserves semantic attributes (`id`, `class`, `href`, `src`)
+- Keeps `aria-*` and `role` attributes
+- Adds `c` counters when `withCounters: true`
+
+### Whitespace Normalization
+
+- Collapses multiple spaces into one
+- Removes leading/trailing whitespace
+- Preserves meaningful line breaks
+
+<CodeGroup>
+
+```html Before Cleaning
+<div style="padding: 20px; margin: 10px;">
+  <button id="login" class="btn btn-primary" style="color: blue;">
+    Login
+  </button>
+  <script>console.log('tracking');</script>
+  <div style="display: none;">Hidden content</div>
+</div>
+```
+
+```html After Cleaning (action mode)
+<button c="1" id="login" class="btn btn-primary">Login</button>
+```
+
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Match snapshot mode to task">
+    Use `action` before interactions, `extraction` before data retrieval, and `clickable`/`scrollable`/`full` for specialized needs.
+    
+    ```typescript
+    // Actions
+    await opensteer.snapshot({ mode: 'action' });
+    await opensteer.click({ description: 'login' });
+    
+    // Extraction
+    await opensteer.snapshot({ mode: 'extraction' });
+    await opensteer.extract({ schema: { title: 'string' } });
+    ```
+  </Accordion>
+  
+  <Accordion title="Take fresh snapshots before critical actions">
+    DOM state can change. Take a new snapshot before important interactions.
+    
+    ```typescript
+    await opensteer.goto('https://example.com');
+    await opensteer.snapshot({ mode: 'action' });
+    await opensteer.click({ description: 'menu' });
+    
+    // DOM changed, take fresh snapshot
+    await opensteer.snapshot({ mode: 'action' });
+    await opensteer.click({ description: 'logout' });
+    ```
+  </Accordion>
+  
+  <Accordion title="Use counters for precise targeting">
+    When you have a specific element counter from a snapshot, use it directly for faster resolution.
+    
+    ```typescript
+    const html = await opensteer.snapshot({ mode: 'action' });
+    // Inspect html to find c="42"
+    await opensteer.click({ element: 42 });
+    ```
+  </Accordion>
+  
+  <Accordion title="Consider token costs">
+    Larger snapshots consume more LLM tokens. Use minimal modes like `clickable` when possible.
+    
+    ```typescript
+    // Expensive (full mode)
+    await opensteer.snapshot({ mode: 'full' });
+    
+    // Cheaper (clickable mode)
+    await opensteer.snapshot({ mode: 'clickable' });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Selectors and Replay" href="/concepts/selectors-and-replay">
+    Learn how selectors are resolved and persisted
+  </Card>
+  <Card title="Snapshot API" href="/api-reference/snapshot">
+    Complete API reference for snapshot() method
+  </Card>
+</CardGroup>

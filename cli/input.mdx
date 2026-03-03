@@ -1,0 +1,106 @@
+---
+title: opensteer input
+description: Input text into an element
+---
+
+Inputs text into a form field or editable element on the page.
+
+## Syntax
+
+```bash
+opensteer input [element] <text> [options]
+opensteer input <text> [options]
+```
+
+## Arguments
+
+- **`element`**: Element index from snapshot (optional)
+- **`text`**: Text to input (required)
+
+## Options
+
+- `--session <id>`: Session ID to use
+- `--element <N>`: Target element by index number
+- `--selector <css>`: Target element by CSS selector
+- `--description <text>`: Target element by description
+- `--text <text>`: Alternative way to specify input text
+
+## Examples
+
+### Input Text by Element Index
+
+```bash
+# First get a snapshot to see element indices
+opensteer snapshot --session agent-a
+
+# Input text into element at index 2
+opensteer input 2 "hello@example.com" --session agent-a
+```
+
+### Input Text with --element Flag
+
+```bash
+opensteer input "hello@example.com" --element 2 --session agent-a
+```
+
+### Input Text by CSS Selector
+
+```bash
+opensteer input "username123" --selector "input#username" --session agent-a
+```
+
+### Input Text by Description
+
+```bash
+opensteer input "password123" --description "password field" --session agent-a
+```
+
+### Using --text Flag
+
+```bash
+opensteer input --element 2 --text "hello@example.com" --session agent-a
+```
+
+### Multi-line Input
+
+```bash
+opensteer input 5 "Line 1
+Line 2
+Line 3" --session agent-a
+```
+
+## Response
+
+```json
+{
+  "ok": true
+}
+```
+
+## Argument Parsing
+
+The `input` command accepts arguments in multiple formats:
+
+```bash
+# Element first, then text
+opensteer input 12 "text"
+
+# Text first, then element
+opensteer input "text" --element 12
+
+# Text only (with --selector or --description)
+opensteer input "text" --selector "input#email"
+```
+
+## Related Commands
+
+- `type <text>`: Type text into currently focused element
+- `press <key>`: Press a keyboard key
+
+## Element Targeting
+
+Like other element commands, you can target elements in three ways:
+
+1. **By Index**: Use the element number from a `snapshot` result
+2. **By Selector**: Use a CSS selector to target the element
+3. **By Description**: Use a human-readable description (leverages selector caching)

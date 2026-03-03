@@ -1,0 +1,542 @@
+---
+title: Computer Use Agent (CUA)
+description: Use OpenSteer's Computer Use Agent for natural language browser automation with support for OpenAI, Anthropic, and Google models.
+---
+
+## Overview
+
+OpenSteer's Computer Use Agent (CUA) allows you to control browsers using natural language instructions. The agent uses vision-language models to understand page content and execute actions autonomously.
+
+## Supported Providers
+
+OpenSteer CUA supports three major AI providers:
+
+<CardGroup cols={3}>
+  <Card title="OpenAI" icon="openai">
+    `openai/computer-use-preview`
+  </Card>
+  <Card title="Anthropic" icon="robot">
+    Claude models with computer use
+  </Card>
+  <Card title="Google" icon="google">
+    Gemini models with computer use
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+Create and execute a CUA agent:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview'
+})
+
+try {
+  await opensteer.launch()
+  
+  const agent = opensteer.agent({ mode: 'cua' })
+  
+  const result = await agent.execute({
+    instruction: 'Go to Hacker News and open the top story.',
+    maxSteps: 20
+  })
+  
+  console.log(result.message)
+  console.log('Completed:', result.completed)
+} finally {
+  await opensteer.close()
+}
+```
+
+## Creating an Agent
+
+### Basic Agent Creation
+
+```typescript
+const agent = opensteer.agent({ mode: 'cua' })
+```
+
+### Agent with Custom Model
+
+```typescript
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview'
+})
+
+const agent = opensteer.agent({
+  mode: 'cua',
+  model: 'openai/gpt-5'
+})
+```
+
+### Agent with Full Model Configuration
+
+```typescript
+const agent = opensteer.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'computer-use-preview',
+    apiKey: process.env.OPENAI_API_KEY,
+    baseUrl: 'https://api.openai.com/v1',
+    organization: 'org-123',
+    thinkingBudget: 10000
+  }
+})
+```
+
+### Custom System Prompt
+
+```typescript
+const agent = opensteer.agent({
+  mode: 'cua',
+  systemPrompt: 'You are a helpful shopping assistant. Find the best deals and compare prices.'
+})
+```
+
+### Wait Between Actions
+
+```typescript
+const agent = opensteer.agent({
+  mode: 'cua',
+  waitBetweenActionsMs: 1000  // Wait 1 second between actions
+})
+```
+
+## Model Configuration Options
+
+<ParamField path="modelName" type="string" required>
+  The name of the model to use (e.g., `computer-use-preview`, `claude-3-5-sonnet-20241022`)
+</ParamField>
+
+<ParamField path="apiKey" type="string">
+  API key for the provider. Falls back to environment variables if not provided.
+</ParamField>
+
+<ParamField path="baseUrl" type="string">
+  Base URL for the API endpoint. Useful for custom endpoints or proxies.
+</ParamField>
+
+<ParamField path="organization" type="string">
+  Organization ID (OpenAI only)
+</ParamField>
+
+<ParamField path="thinkingBudget" type="number">
+  Token budget for extended thinking (if supported by model)
+</ParamField>
+
+<ParamField path="environment" type="string">
+  Environment identifier (Google only)
+</ParamField>
+
+## Executing Instructions
+
+### Simple Execution
+
+```typescript
+const result = await agent.execute('Go to Google and search for OpenSteer')
+```
+
+### Execution with Options
+
+```typescript
+const result = await agent.execute({
+  instruction: 'Find the top 3 products on this page and click the first one',
+  maxSteps: 30,
+  highlightCursor: true
+})
+```
+
+## Execution Options
+
+<ParamField path="instruction" type="string" required>
+  The natural language instruction for the agent to execute
+</ParamField>
+
+<ParamField path="maxSteps" type="number" default={20}>
+  Maximum number of actions the agent can take before stopping
+</ParamField>
+
+<ParamField path="highlightCursor" type="boolean" default={false}>
+  Show a visual cursor indicator when the agent performs mouse actions
+</ParamField>
+
+## Result Structure
+
+The `execute()` method returns a detailed result object:
+
+```typescript
+interface OpensteerAgentResult {
+  success: boolean        // Whether execution completed without errors
+  completed: boolean      // Whether the task was completed
+  message: string         // Final message from the agent
+  actions: OpensteerAgentAction[]  // List of actions taken
+  usage?: OpensteerAgentUsage      // Token and time usage
+  provider: string        // Provider used (openai, anthropic, google)
+  model: string          // Model used
+}
+```
+
+### Result Properties
+
+<ResponseField name="success" type="boolean">
+  Indicates if execution completed without errors. `false` if the agent encountered an error.
+</ResponseField>
+
+<ResponseField name="completed" type="boolean">
+  Indicates if the agent completed the task. `false` if maxSteps was reached before completion.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Final message from the agent explaining the result or what it accomplished.
+</ResponseField>
+
+<ResponseField name="actions" type="OpensteerAgentAction[]">
+  Array of all actions the agent performed (clicks, typing, scrolling, etc.)
+</ResponseField>
+
+<ResponseField name="usage" type="OpensteerAgentUsage">
+  Token usage and inference time statistics
+</ResponseField>
+
+<ResponseField name="provider" type="string">
+  The AI provider used: `openai`, `anthropic`, or `google`
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  The full model name that was used
+</ResponseField>
+
+## Actions
+
+Each action in the `actions` array contains:
+
+```typescript
+interface OpensteerAgentAction {
+  type: string           // Action type: click, type, scroll, etc.
+  reasoning?: string     // Agent's reasoning for this action
+  button?: string        // Mouse button (for clicks)
+  clickCount?: number    // Number of clicks
+  x?: number            // X coordinate
+  y?: number            // Y coordinate
+  text?: string         // Text to type
+  keys?: string[]       // Keys pressed
+  scrollX?: number      // Horizontal scroll amount
+  scrollY?: number      // Vertical scroll amount
+  timeMs?: number       // Time taken for action
+  url?: string          // URL (for navigation)
+  path?: Array<{ x: number; y: number }>  // Mouse movement path
+}
+```
+
+### Example Actions
+
+```typescript
+const result = await agent.execute({
+  instruction: 'Click the login button',
+  maxSteps: 10
+})
+
+// Inspect actions taken
+for (const action of result.actions) {
+  console.log(`Action: ${action.type}`)
+  if (action.reasoning) {
+    console.log(`Reasoning: ${action.reasoning}`)
+  }
+  if (action.type === 'click') {
+    console.log(`Clicked at (${action.x}, ${action.y})`)
+  }
+}
+```
+
+## Usage Statistics
+
+The `usage` object provides token and performance metrics:
+
+```typescript
+interface OpensteerAgentUsage {
+  inputTokens: number       // Input tokens consumed
+  outputTokens: number      // Output tokens generated
+  reasoningTokens?: number  // Reasoning tokens (if applicable)
+  inferenceTimeMs: number   // Total inference time in milliseconds
+}
+```
+
+### Example Usage
+
+```typescript
+const result = await agent.execute('Navigate to the pricing page')
+
+if (result.usage) {
+  console.log('Input tokens:', result.usage.inputTokens)
+  console.log('Output tokens:', result.usage.outputTokens)
+  console.log('Inference time:', result.usage.inferenceTimeMs, 'ms')
+}
+```
+
+## Provider-Specific Setup
+
+### OpenAI
+
+```typescript
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview'
+})
+
+const agent = opensteer.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'computer-use-preview',
+    apiKey: process.env.OPENAI_API_KEY,
+    organization: 'org-123'  // Optional
+  }
+})
+```
+
+Environment variables:
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+### Anthropic
+
+```typescript
+const opensteer = new Opensteer({
+  model: 'anthropic/claude-3-5-sonnet-20241022'
+})
+
+const agent = opensteer.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'claude-3-5-sonnet-20241022',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    thinkingBudget: 10000  // Extended thinking tokens
+  }
+})
+```
+
+Environment variables:
+- `ANTHROPIC_API_KEY`: Your Anthropic API key
+
+### Google
+
+```typescript
+const opensteer = new Opensteer({
+  model: 'google/gemini-2.0-flash-exp'
+})
+
+const agent = opensteer.agent({
+  mode: 'cua',
+  model: {
+    modelName: 'gemini-2.0-flash-exp',
+    apiKey: process.env.GOOGLE_API_KEY,
+    environment: 'production'  // Optional
+  }
+})
+```
+
+Environment variables:
+- `GOOGLE_API_KEY`: Your Google API key
+
+## Complete Example
+
+Here's a complete example from the OpenSteer documentation:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+  const opensteer = new Opensteer({
+    model: 'openai/computer-use-preview',
+  })
+  
+  try {
+    await opensteer.launch()
+    
+    const agent = opensteer.agent({
+      mode: 'cua',
+    })
+    
+    const result = await agent.execute({
+      instruction: 'Go to docs and summarize the first section',
+      maxSteps: 20,
+      highlightCursor: true,
+    })
+    
+    console.log('Success:', result.success)
+    console.log('Completed:', result.completed)
+    console.log('Message:', result.message)
+    console.log('\nActions taken:', result.actions.length)
+    
+    if (result.usage) {
+      console.log('\nToken usage:')
+      console.log('  Input:', result.usage.inputTokens)
+      console.log('  Output:', result.usage.outputTokens)
+      console.log('  Time:', result.usage.inferenceTimeMs, 'ms')
+    }
+  } finally {
+    await opensteer.close()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+```
+
+## Cloud Mode Support
+
+CUA agents work in both local and cloud modes:
+
+```typescript
+const opensteer = new Opensteer({
+  model: 'openai/computer-use-preview',
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY
+  }
+})
+
+await opensteer.launch()
+
+const agent = opensteer.agent({ mode: 'cua' })
+const result = await agent.execute('Find and click the sign-up button')
+```
+
+<Info>
+CUA actions execute against the active cloud CDP page when using cloud mode.
+</Info>
+
+## Error Handling
+
+```typescript
+try {
+  const result = await agent.execute({
+    instruction: 'Complete the checkout process',
+    maxSteps: 50
+  })
+  
+  if (!result.success) {
+    console.error('Agent encountered an error:', result.message)
+  }
+  
+  if (!result.completed) {
+    console.warn('Agent did not complete the task within maxSteps')
+    console.warn('Last action:', result.actions[result.actions.length - 1])
+  }
+} catch (error) {
+  console.error('Execution failed:', error)
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Set appropriate maxSteps">
+    ```typescript
+    // Simple task
+    const result = await agent.execute({
+      instruction: 'Click the login button',
+      maxSteps: 5
+    })
+    
+    // Complex task
+    const result = await agent.execute({
+      instruction: 'Fill out the entire registration form',
+      maxSteps: 30
+    })
+    ```
+    
+    Set `maxSteps` based on task complexity to prevent runaway executions.
+  </Accordion>
+
+  <Accordion title="Use highlightCursor for debugging">
+    ```typescript
+    const result = await agent.execute({
+      instruction: 'Navigate through the menu',
+      highlightCursor: true  // Shows red cursor indicator
+    })
+    ```
+    
+    Enable cursor highlighting to visually track agent actions during development.
+  </Accordion>
+
+  <Accordion title="Provide clear instructions">
+    ```typescript
+    // Good - specific and clear
+    const result = await agent.execute(
+      'Go to the pricing page, find the Enterprise plan, and click the contact sales button'
+    )
+    
+    // Bad - vague
+    const result = await agent.execute('do something')
+    ```
+    
+    Clear instructions help the agent understand and complete tasks efficiently.
+  </Accordion>
+
+  <Accordion title="Check result status">
+    ```typescript
+    const result = await agent.execute('Complete the task')
+    
+    if (result.success && result.completed) {
+      console.log('Task completed successfully')
+    } else if (result.success && !result.completed) {
+      console.log('Agent ran out of steps')
+      console.log('Consider increasing maxSteps')
+    } else {
+      console.error('Error occurred:', result.message)
+    }
+    ```
+    
+    Always check both `success` and `completed` to understand the outcome.
+  </Accordion>
+
+  <Accordion title="Customize system prompts for specific domains">
+    ```typescript
+    const agent = opensteer.agent({
+      mode: 'cua',
+      systemPrompt: `You are a product research assistant.
+        When finding products, always check:
+        1. Price
+        2. Ratings
+        3. Availability
+        
+        Prioritize highly-rated items.`
+    })
+    ```
+    
+    Custom prompts help the agent follow domain-specific rules.
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+<Warning>
+**CUA agents require launched browser**
+
+You must call `await opensteer.launch()` before creating and using a CUA agent.
+</Warning>
+
+<Info>
+**Cloud mode restrictions**
+
+Some features like `uploadFile()`, `exportCookies()`, and `importCookies()` are not supported in cloud mode.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browser Automation" icon="browser" href="/guides/browser-automation">
+    Learn manual automation for more precise control
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    Integrate OpenSteer with AI agent workflows
+  </Card>
+  <Card title="Cloud Integration" icon="cloud" href="/guides/cloud-integration">
+    Scale CUA with cloud mode
+  </Card>
+  <Card title="Data Extraction" icon="database" href="/guides/data-extraction">
+    Combine CUA with structured data extraction
+  </Card>
+</CardGroup>

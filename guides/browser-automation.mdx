@@ -1,0 +1,535 @@
+---
+title: Browser Automation
+description: Learn how to use OpenSteer for browser automation with deterministic replay, element targeting, and best practices.
+---
+
+## Overview
+
+OpenSteer provides a powerful API for browser automation that combines the flexibility of Playwright with AI-powered element resolution and deterministic replay capabilities. This guide covers the core automation features and best practices.
+
+## Getting Started
+
+### Installation
+
+First, install OpenSteer and browser binaries:
+
+```bash
+npm install opensteer
+npx playwright install chromium
+```
+
+### Basic Setup
+
+Create an OpenSteer instance and launch a browser:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({ name: 'my-scraper' })
+await opensteer.launch({ headless: false })
+```
+
+<Info>
+The `name` parameter creates a namespace for caching selectors. Use the same name across CLI exploration and SDK scripts for deterministic replay.
+</Info>
+
+## Navigation
+
+### Opening Pages
+
+Use `goto()` for initial navigation:
+
+```typescript
+await opensteer.goto('https://example.com')
+```
+
+<Note>
+For subsequent navigation after the initial page load, consider using navigation actions like `click()` on links.
+</Note>
+
+### Navigation Options
+
+Control page loading behavior with options:
+
+```typescript
+await opensteer.goto('https://example.com', {
+  timeout: 30000,
+  waitUntil: 'networkidle',
+  settleMs: 500
+})
+```
+
+- **timeout**: Maximum time to wait for page load (milliseconds)
+- **waitUntil**: When to consider navigation complete (`commit`, `domcontentloaded`, `load`, `networkidle`)
+- **settleMs**: Additional time to wait after page load for stability
+
+## Taking Snapshots
+
+Snapshots are HTML representations of the page with element counters for targeting. Always take snapshots before actions or extraction.
+
+### Action Snapshots
+
+Use `action` mode to identify interactive elements:
+
+```typescript
+const html = await opensteer.snapshot({ mode: 'action' })
+console.log(html)
+```
+
+This returns HTML with `c="..."` attributes on clickable elements, inputs, buttons, and links.
+
+### Extraction Snapshots
+
+Use `extraction` mode to identify data elements:
+
+```typescript
+const html = await opensteer.snapshot({ mode: 'extraction' })
+```
+
+This returns flattened, data-oriented HTML optimized for structured extraction.
+
+### Snapshot Modes
+
+- **action** (default): Interactive elements (clicks, inputs, selects)
+- **extraction**: Data-oriented HTML for extraction
+- **clickable**: Only clickable elements
+- **scrollable**: Only scrollable containers
+- **full**: Raw HTML without filtering
+
+## Performing Actions
+
+### Click
+
+Click elements using description, element counter, or selector:
+
+```typescript
+// Using description (recommended for replay)
+await opensteer.click({ description: 'login button' })
+
+// Using element counter from snapshot
+await opensteer.click({ element: 3 })
+
+// Using CSS selector
+await opensteer.click({ selector: '#submit-btn' })
+```
+
+<Tip>
+Always provide a `description` when you want the selector to be cached for deterministic replay.
+</Tip>
+
+#### Click Options
+
+```typescript
+await opensteer.click({
+  description: 'submit button',
+  button: 'left',  // 'left', 'right', 'middle'
+  clickCount: 2,    // Double-click
+  modifiers: ['Control', 'Shift']  // Hold modifier keys
+})
+```
+
+### Input Text
+
+Fill text inputs and textareas:
+
+```typescript
+await opensteer.input({
+  description: 'email input',
+  text: 'user@example.com'
+})
+
+// Clear existing text before input
+await opensteer.input({
+  description: 'search box',
+  text: 'laptop',
+  clear: true,
+  pressEnter: true
+})
+```
+
+**Real-world example from source:**
+
+```typescript
+await opensteer.input({
+  text: 'Ada Lovelace',
+  description: 'Fill first name',
+})
+
+await opensteer.input({
+  text: 'Lovelace',
+  description: 'Fill in last name',
+})
+```
+
+### Hover
+
+Trigger hover effects:
+
+```typescript
+await opensteer.hover({ description: 'menu item' })
+
+// Hover at specific position within element
+await opensteer.hover({
+  description: 'image',
+  position: { x: 10, y: 10 }
+})
+```
+
+### Select Dropdown
+
+Select options from dropdowns:
+
+```typescript
+// By value
+await opensteer.select({
+  description: 'country dropdown',
+  value: 'us'
+})
+
+// By label
+await opensteer.select({
+  description: 'country dropdown',
+  label: 'United States'
+})
+
+// By index
+await opensteer.select({
+  description: 'country dropdown',
+  index: 0
+})
+```
+
+### Scroll
+
+Scroll elements or the page:
+
+```typescript
+// Scroll page down
+await opensteer.scroll({
+  direction: 'down',
+  amount: 500
+})
+
+// Scroll specific element
+await opensteer.scroll({
+  description: 'scrollable container',
+  direction: 'down',
+  amount: 300
+})
+```
+
+Directions: `up`, `down`, `left`, `right`
+
+## Screenshot Capture
+
+Capture screenshots of the current page:
+
+```typescript
+// Full page screenshot
+const screenshot = await opensteer.screenshot({ fullPage: true })
+
+// Viewport-only screenshot
+const screenshot = await opensteer.screenshot({ fullPage: false })
+
+// JPEG with quality
+const screenshot = await opensteer.screenshot({
+  type: 'jpeg',
+  quality: 80
+})
+```
+
+Screenshots return a `Buffer` that can be saved to disk.
+
+## Tab Management
+
+### Create New Tabs
+
+```typescript
+await opensteer.newTab()
+await opensteer.goto('https://example.com')
+```
+
+### Switch Between Tabs
+
+```typescript
+// List all tabs
+const tabs = await opensteer.tabs()
+console.log(tabs) // [{ index: 0, url: '...', title: '...', active: true }]
+
+// Switch to tab by index
+await opensteer.switchTab(1)
+```
+
+### Close Tabs
+
+```typescript
+// Close current tab
+await opensteer.closeTab()
+
+// Close specific tab
+await opensteer.closeTab(0)
+```
+
+## Element Targeting Strategy
+
+OpenSteer uses a multi-layered approach to find elements:
+
+1. **Cached selector** (from previous `description` runs)
+2. **Element counter** (from snapshot)
+3. **CSS selector** (explicit selector)
+4. **AI resolution** (when `description` is provided)
+
+### Best Practices for Targeting
+
+<AccordionGroup>
+  <Accordion title="Use descriptions for replay">
+    Always provide a `description` when you want actions to replay deterministically:
+    
+    ```typescript
+    await opensteer.click({ description: 'submit button' })
+    ```
+    
+    The first time this runs, OpenSteer resolves the element and caches its selector. Subsequent runs use the cached selector instantly.
+  </Accordion>
+
+  <Accordion title="Use element counters for exploration">
+    During CLI exploration, use element counters from snapshots:
+    
+    ```bash
+    opensteer snapshot action
+    opensteer click 5
+    ```
+    
+    Once you've identified the right element, add a description:
+    
+    ```bash
+    opensteer click 5 --description "the submit button"
+    ```
+  </Accordion>
+
+  <Accordion title="Use selectors sparingly">
+    Only use explicit CSS selectors when necessary:
+    
+    ```typescript
+    await opensteer.click({ selector: '#unique-id' })
+    ```
+    
+    Selectors are brittle and break when page structure changes.
+  </Accordion>
+</AccordionGroup>
+
+## Wait Strategies
+
+### Automatic Waiting
+
+All OpenSteer actions automatically wait for elements to be ready. You typically don't need manual waits.
+
+### Waiting for Text
+
+For SPA content or dynamic updates:
+
+```typescript
+await opensteer.waitForText('Results loaded')
+```
+
+### Waiting for Selectors
+
+Wait for specific elements to appear:
+
+```typescript
+await opensteer.page.waitForSelector('.results')
+```
+
+<Warning>
+Only use manual waits for page transitions or SPA content. Don't add waits before standard actions like `click()` or `input()` - they handle waiting internally.
+</Warning>
+
+## Browser Configuration
+
+### Launch Options
+
+```typescript
+await opensteer.launch({
+  headless: false,           // Show browser UI
+  slowMo: 100,               // Slow down operations (ms)
+  executablePath: '/path',   // Custom browser binary
+  channel: 'chrome',         // Browser channel
+  profileDir: '/profile',    // Persistent profile
+  timeout: 30000            // Connection timeout
+})
+```
+
+### Connect to Running Browser
+
+Attach to an existing browser with Chrome DevTools Protocol:
+
+```typescript
+await opensteer.launch({
+  connectUrl: 'http://localhost:9222'
+})
+```
+
+Enable CDP on Chrome:
+```bash
+chrome --remote-debugging-port=9222
+```
+
+### Using Browser Profiles
+
+Preserve cookies, extensions, and sessions:
+
+```typescript
+await opensteer.launch({
+  profileDir: './browser-profile'
+})
+```
+
+## Best Practices
+
+### 1. Always Close Resources
+
+Wrap automation in try/finally:
+
+```typescript
+const opensteer = new Opensteer({ name: 'my-scraper' })
+
+try {
+  await opensteer.launch()
+  await opensteer.goto('https://example.com')
+  // ... automation steps
+} finally {
+  await opensteer.close()
+}
+```
+
+### 2. Consistent Naming
+
+Use the same `name` in CLI and SDK for selector caching:
+
+```bash
+# CLI exploration
+opensteer open https://example.com --name my-scraper
+```
+
+```typescript
+// SDK script
+const opensteer = new Opensteer({ name: 'my-scraper' })
+```
+
+### 3. Snapshot Before Actions
+
+Take snapshots to identify elements:
+
+```typescript
+// 1. Take snapshot
+const html = await opensteer.snapshot({ mode: 'action' })
+console.log(html)
+
+// 2. Identify element counter
+// 3. Perform action with counter and description
+await opensteer.click({
+  element: 5,
+  description: 'login button'
+})
+```
+
+### 4. Prefer Description Targeting
+
+Use descriptive names for all actions you want to replay:
+
+```typescript
+// Good - replayable
+await opensteer.click({ description: 'search button' })
+await opensteer.input({ description: 'email field', text: 'user@example.com' })
+
+// Avoid - not replayable
+await opensteer.click({ element: 5 })
+```
+
+### 5. Handle Dynamic Content
+
+For SPAs and dynamic content:
+
+```typescript
+// Wait for content to load
+await opensteer.waitForText('Dashboard')
+
+// Then take action
+await opensteer.click({ description: 'settings link' })
+```
+
+### 6. Default to Non-Headless
+
+Many sites detect and block headless browsers:
+
+```typescript
+await opensteer.launch({ headless: false })
+```
+
+## Complete Example
+
+Here's a complete browser automation script:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+  const opensteer = new Opensteer({
+    name: 'contact-form',
+    model: 'gpt-5-mini'
+  })
+
+  try {
+    await opensteer.launch({ headless: false })
+    await opensteer.goto('https://example.com/contact')
+
+    // Fill form fields
+    await opensteer.input({
+      description: 'name field',
+      text: 'Ada Lovelace'
+    })
+
+    await opensteer.input({
+      description: 'email field',
+      text: 'ada@example.com'
+    })
+
+    await opensteer.input({
+      description: 'message field',
+      text: 'Hello from OpenSteer!'
+    })
+
+    // Submit form
+    await opensteer.click({ description: 'submit button' })
+
+    // Wait for confirmation
+    await opensteer.waitForText('Thank you')
+
+    console.log('Form submitted successfully!')
+  } finally {
+    await opensteer.close()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Extraction" icon="database" href="/guides/data-extraction">
+    Learn how to extract structured data from web pages
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    Integrate OpenSteer with AI agents for automated workflows
+  </Card>
+  <Card title="Cloud Integration" icon="cloud" href="/guides/cloud-integration">
+    Run OpenSteer in cloud mode for scalable automation
+  </Card>
+  <Card title="CUA Agent" icon="wand-magic-sparkles" href="/guides/cua-agent">
+    Use Computer Use Agents for natural language automation
+  </Card>
+</CardGroup>

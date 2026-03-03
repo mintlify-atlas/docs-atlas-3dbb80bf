@@ -1,0 +1,157 @@
+---
+title: input
+description: Type text into input fields with options to clear existing content and press Enter
+---
+
+## Method Signature
+
+```typescript
+await opensteer.input(options: InputOptions): Promise<ActionResult>
+```
+
+Types text into an input field or textarea. By default, clears existing content before typing.
+
+## Parameters
+
+<ParamField path="options" type="InputOptions" required>
+  Configuration for the input action
+  
+  <Expandable title="InputOptions properties">
+    <ParamField path="text" type="string" required>
+      The text to type into the input field.
+    </ParamField>
+    
+    <ParamField path="description" type="string">
+      Natural language description of the input element. Used for AI-powered element resolution when `element` or `selector` are not provided.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact element.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the input element.
+    </ParamField>
+    
+    <ParamField path="clear" type="boolean" default="true">
+      Whether to clear the existing content before typing. Set to `false` to append text.
+    </ParamField>
+    
+    <ParamField path="pressEnter" type="boolean" default="false">
+      Whether to press Enter after typing the text.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("input")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Input
+
+```typescript
+// Type into a field using AI-powered detection
+await opensteer.input({
+  description: 'Email address field',
+  text: 'user@example.com'
+})
+```
+
+### Input with Selector
+
+```typescript
+// Type using CSS selector
+await opensteer.input({
+  selector: '#username',
+  text: 'john_doe',
+  description: 'Username field'
+})
+```
+
+### Submit Form with Enter
+
+```typescript
+// Type and press Enter to submit
+await opensteer.input({
+  description: 'Search box',
+  text: 'OpenSteer documentation',
+  pressEnter: true
+})
+```
+
+### Append Text
+
+```typescript
+// Append to existing content without clearing
+await opensteer.input({
+  description: 'Message input',
+  text: ' - additional text',
+  clear: false
+})
+```
+
+### Input with Element Counter
+
+```typescript
+// Use element counter from snapshot
+await opensteer.input({
+  element: 15,
+  description: 'Password field',
+  text: 'secure-password-123'
+})
+```
+
+### Multi-field Form
+
+```typescript
+// Fill multiple form fields
+await opensteer.input({
+  description: 'First name',
+  text: 'John'
+})
+
+await opensteer.input({
+  description: 'Last name',
+  text: 'Doe'
+})
+
+await opensteer.input({
+  description: 'Email',
+  text: 'john.doe@example.com',
+  pressEnter: true
+})
+```
+
+## Related methods
+
+- [click](/api/actions/click) - Click on elements
+- [select](/api/actions/select) - Select dropdown options
+- [file-upload](/api/actions/file-upload) - Upload files

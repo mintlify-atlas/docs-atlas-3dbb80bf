@@ -1,0 +1,268 @@
+---
+title: Navigation methods
+description: Navigate between pages and manage browser history
+icon: compass
+---
+
+## `goto()`
+
+Navigate to a URL and wait for visual stability. Prefer this over `opensteer.page.goto()` for consistent post-navigation settling.
+
+```ts
+await opensteer.goto(url: string, options?: GotoOptions)
+```
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  The URL to navigate to. Can be absolute or relative (relative to current page).
+</ParamField>
+
+<ParamField path="timeout" type="number">
+  Maximum navigation time in milliseconds. Default: 30000 (30 seconds)
+</ParamField>
+
+<ParamField path="waitUntil" type="'commit' | 'domcontentloaded' | 'load' | 'networkidle'">
+  When to consider navigation succeeded:
+  - `commit` - navigation committed (fastest)
+  - `domcontentloaded` - DOMContentLoaded event fired
+  - `load` - load event fired (default)
+  - `networkidle` - no network connections for at least 500ms
+</ParamField>
+
+<ParamField path="settleMs" type="number">
+  Additional wait time in milliseconds after the page load event. Default: 1000ms
+</ParamField>
+
+### Examples
+
+#### Basic navigation
+
+```ts
+await opensteer.goto('https://example.com')
+```
+
+#### Wait for network idle
+
+```ts
+await opensteer.goto('https://example.com', {
+  waitUntil: 'networkidle',
+  settleMs: 1500
+})
+```
+
+#### Fast navigation
+
+```ts
+await opensteer.goto('https://example.com', {
+  waitUntil: 'commit',
+  settleMs: 0
+})
+```
+
+#### Navigate with timeout
+
+```ts
+try {
+  await opensteer.goto('https://slow-site.com', {
+    timeout: 60000, // 60 seconds
+    waitUntil: 'load'
+  })
+} catch (error) {
+  console.error('Navigation timeout:', error)
+}
+```
+
+## `reload()`
+
+Reload the current page.
+
+```ts
+await opensteer.reload()
+```
+
+### Example
+
+```ts
+await opensteer.goto('https://example.com')
+
+// Modify page state
+await opensteer.click({ description: 'filter button' })
+
+// Reload to reset state
+await opensteer.reload()
+```
+
+## `goBack()`
+
+Navigate to the previous page in history.
+
+```ts
+await opensteer.goBack()
+```
+
+### Example
+
+```ts
+await opensteer.goto('https://example.com')
+await opensteer.goto('https://example.com/about')
+
+// Go back to homepage
+await opensteer.goBack()
+
+const { url } = await opensteer.state()
+console.log(url) // https://example.com
+```
+
+## `goForward()`
+
+Navigate to the next page in history.
+
+```ts
+await opensteer.goForward()
+```
+
+### Example
+
+```ts
+await opensteer.goto('https://example.com')
+await opensteer.goto('https://example.com/about')
+await opensteer.goBack()
+
+// Go forward to /about again
+await opensteer.goForward()
+
+const { url } = await opensteer.state()
+console.log(url) // https://example.com/about
+```
+
+## `waitForVisualStability()`
+
+Wait for the page to become visually stable (exported utility function).
+
+```ts
+import { waitForVisualStability } from 'opensteer'
+
+await waitForVisualStability(page, options?)
+```
+
+### Parameters
+
+<ParamField path="page" type="Page" required>
+  Playwright Page instance.
+</ParamField>
+
+<ParamField path="options" type="object">
+  <Expandable title="properties">
+    <ParamField path="timeout" type="number">
+      Maximum wait time in milliseconds. Default: 30000
+    </ParamField>
+    
+    <ParamField path="settleMs" type="number">
+      Time to wait for stability in milliseconds. Default: 1000
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example
+
+```ts
+import { chromium } from 'playwright'
+import { waitForVisualStability } from 'opensteer'
+
+const browser = await chromium.launch()
+const page = await browser.newPage()
+
+await page.goto('https://example.com')
+await waitForVisualStability(page, { settleMs: 2000 })
+
+console.log('Page is stable')
+```
+
+## Navigation patterns
+
+### Multi-page workflow
+
+```ts
+const opensteer = new Opensteer({ name: 'multi-page' })
+await opensteer.launch()
+
+try {
+  // Navigate to first page
+  await opensteer.goto('https://example.com')
+  await opensteer.click({ description: 'login button' })
+  
+  // Navigate to second page
+  await opensteer.goto('https://example.com/dashboard')
+  const data = await opensteer.extract({
+    schema: { username: 'string' }
+  })
+  
+  // Go back and forward
+  await opensteer.goBack()
+  await opensteer.goForward()
+  
+} finally {
+  await opensteer.close()
+}
+```
+
+### Handle navigation errors
+
+```ts
+try {
+  await opensteer.goto('https://example.com', {
+    timeout: 15000,
+    waitUntil: 'networkidle'
+  })
+} catch (error) {
+  if (error.message.includes('timeout')) {
+    console.error('Page took too long to load')
+    // Retry with faster settings
+    await opensteer.goto('https://example.com', {
+      waitUntil: 'domcontentloaded',
+      settleMs: 500
+    })
+  } else {
+    throw error
+  }
+}
+```
+
+### SPA navigation
+
+For single-page applications where the URL changes without a full page load:
+
+```ts
+// Initial navigation
+await opensteer.goto('https://spa-app.com')
+
+// Click changes URL but doesn't reload
+await opensteer.click({ description: 'about link' })
+
+// Wait for stability after client-side navigation
+await waitForVisualStability(opensteer.page)
+
+// Or use a manual wait
+await opensteer.page.waitForTimeout(1000)
+```
+
+## Best practices
+
+<Tip>
+  Use `goto()` instead of `page.goto()` for automatic visual stability detection.
+</Tip>
+
+<Info>
+  The default `settleMs: 1000` works for most pages. Increase it for pages with animations or dynamic content.
+</Info>
+
+<Warning>
+  Network idle can be unreliable for pages with long-polling or WebSocket connections. Use `load` or `domcontentloaded` instead.
+</Warning>
+
+## Related methods
+
+- [launch()](/api/lifecycle#launch) - Launch browser before navigation
+- [state()](/api/utilities/state#state) - Get current URL and page state
+- [Tab management](/api/utilities/tabs) - Navigate between tabs

@@ -1,0 +1,155 @@
+---
+title: CLI Overview
+description: Introduction to the OpenSteer command-line interface
+---
+
+The `opensteer` CLI is a session-based browser automation tool that runs local daemons and returns JSON output for programmatic integration.
+
+## Installation
+
+Install OpenSteer globally:
+
+```bash
+npm install -g opensteer
+```
+
+## Session-Based Workflow
+
+OpenSteer uses a session-based architecture where each session manages its own browser instance and daemon process.
+
+### Session Resolution
+
+Sessions are resolved in the following order:
+
+1. `--session <id>` flag
+2. `OPENSTEER_SESSION` environment variable
+3. `OPENSTEER_CLIENT_ID` environment variable (creates persistent binding)
+4. Terminal-scoped default (interactive mode only)
+
+If none of these are set in non-interactive mode, OpenSteer will error.
+
+### Namespace Resolution
+
+The `--name` flag or `OPENSTEER_NAME` environment variable sets the selector cache namespace for element persistence. This applies when running `opensteer open`.
+
+- `--name <namespace>` flag
+- `OPENSTEER_NAME` environment variable
+- Falls back to session ID if neither is set
+
+## Environment Variables
+
+### Session Management
+
+- **`OPENSTEER_SESSION`**: Runtime session ID (equivalent to `--session`)
+- **`OPENSTEER_CLIENT_ID`**: Stable client identity for default session binding
+- **`OPENSTEER_NAME`**: Default selector namespace for `open` when `--name` is omitted
+
+### Cloud Mode
+
+- **`OPENSTEER_MODE`**: Runtime routing mode (`local` or `cloud`, default: `local`)
+- **`OPENSTEER_API_KEY`**: Required when cloud mode is selected
+- **`OPENSTEER_BASE_URL`**: Override cloud control-plane base URL
+- **`OPENSTEER_AUTH_SCHEME`**: Cloud auth scheme (`api-key` or `bearer`, default: `api-key`)
+- **`OPENSTEER_REMOTE_ANNOUNCE`**: Cloud session announcement policy (`always`, `off`, or `tty`, default: `always`)
+
+## Common Patterns
+
+### Basic Session Usage
+
+```bash
+# Open a browser session
+opensteer open https://example.com --session my-session
+
+# Take a snapshot
+opensteer snapshot --session my-session
+
+# Interact with elements
+opensteer click 3 --session my-session
+
+# Check session status
+opensteer status --session my-session
+
+# Close the session
+opensteer close --session my-session
+```
+
+### Using Environment Variables
+
+```bash
+# Set session ID for all commands
+export OPENSTEER_SESSION=my-session
+
+opensteer open https://example.com
+opensteer snapshot
+opensteer click 3
+opensteer close
+```
+
+### Client-Scoped Sessions
+
+```bash
+# Use OPENSTEER_CLIENT_ID for persistent session binding
+export OPENSTEER_CLIENT_ID=agent-bot-1
+
+# OpenSteer will create/reuse a session based on client ID + working directory
+opensteer open https://example.com
+opensteer snapshot
+```
+
+### Named Selector Cache
+
+```bash
+# Use --name to namespace selector caching
+opensteer open https://example.com --session scraper --name product-page
+opensteer click --description "Add to cart button" --session scraper
+```
+
+## Global Flags
+
+- `--session <id>`: Runtime session ID for daemon/browser routing
+- `--name <namespace>`: Selector namespace for cache storage on `open`
+- `--headless`: Launch browser in headless mode
+- `--connect-url <url>`: Connect to a running browser (e.g. `http://localhost:9222`)
+- `--channel <browser>`: Use installed browser (`chrome`, `chrome-beta`, `msedge`)
+- `--profile-dir <path>`: Browser profile directory for logged-in sessions
+- `--element <N>`: Target element by counter
+- `--selector <css>`: Target element by CSS selector
+- `--description <text>`: Description for selector persistence
+- `--json`: Output JSON format
+- `--help`: Show help
+- `--version`, `-v`: Show version
+
+## Output Format
+
+All commands (except `skills`) return JSON on stdout:
+
+```json
+{
+  "ok": true,
+  "result": { ... }
+}
+```
+
+Errors are written to stderr:
+
+```json
+{
+  "ok": false,
+  "error": "Error message",
+  "code": "ERROR_CODE",
+  "details": { ... }
+}
+```
+
+## Managing Sessions
+
+```bash
+# List all active sessions
+opensteer sessions
+
+# Get current session status
+opensteer status --session my-session
+
+# Close all sessions
+opensteer close --all
+```

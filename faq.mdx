@@ -1,0 +1,404 @@
+---
+title: FAQ
+description: Frequently asked questions about OpenSteer
+---
+
+## General Questions
+
+<AccordionGroup>
+  <Accordion title="What is OpenSteer?">
+    OpenSteer is a browser automation framework for developers and AI agents with deterministic replay. It provides a unified API for local and cloud execution, description-based actions, structured extraction, and CUA agent workflows.
+    
+    Key features:
+    - Description-based element targeting
+    - Automatic selector persistence
+    - Structured data extraction with schemas
+    - Native CUA agent support
+    - Local and cloud mode
+  </Accordion>
+
+  <Accordion title="How is OpenSteer different from Playwright or Puppeteer?">
+    OpenSteer builds on Playwright but adds:
+    
+    - **Description-based targeting**: Use natural language instead of CSS selectors
+    - **Automatic selector persistence**: Selectors are saved and reused for deterministic replay
+    - **LLM-powered resolution**: AI resolves descriptions to selectors automatically
+    - **Structured extraction**: Extract data with typed schemas
+    - **CUA agent support**: Native integration with computer use agents
+    - **Snapshot modes**: Optimized HTML for action vs extraction workflows
+    
+    OpenSteer is designed for AI agents and maintainable automation scripts.
+  </Accordion>
+
+  <Accordion title="What are the requirements?">
+    - Node.js `>=20`
+    - Playwright-compatible runtime environment
+    - API key for your model provider (for LLM resolve/extract)
+    
+    If browser binaries are missing:
+    ```bash
+    npx playwright install chromium
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Local vs Cloud Mode
+
+<AccordionGroup>
+  <Accordion title="What is the difference between local and cloud mode?">
+    **Local mode (default)**:
+    - Runs browser on your machine
+    - Full control over browser environment
+    - Supports file uploads, cookie import/export
+    - Uses your model provider API keys (OpenAI, Anthropic, etc.)
+    
+    **Cloud mode**:
+    - Runs browser on OpenSteer's infrastructure
+    - Scalable and managed
+    - Requires OpenSteer API key
+    - Fail-fast (no automatic fallback to local)
+    - Does not support `uploadFile()`, `exportCookies()`, `importCookies()`
+  </Accordion>
+
+  <Accordion title="How do I enable cloud mode?">
+    Via environment variables:
+    ```bash
+    OPENSTEER_MODE=cloud
+    OPENSTEER_API_KEY=ork_your_key
+    ```
+    
+    Or in code:
+    ```typescript
+    const opensteer = new Opensteer({ 
+      name: "my-app",
+      cloud: true 
+    });
+    ```
+    
+    Additional cloud options:
+    - `OPENSTEER_BASE_URL` - Override default cloud host
+    - `OPENSTEER_AUTH_SCHEME` - Use `api-key` (default) or `bearer`
+  </Accordion>
+
+  <Accordion title="Does cloud mode fall back to local mode?">
+    No. Cloud mode is fail-fast and does not automatically fall back to local mode. If cloud execution fails, you'll receive an error.
+    
+    This ensures predictable behavior and prevents unexpected local resource usage.
+  </Accordion>
+</AccordionGroup>
+
+## Selector Persistence
+
+<AccordionGroup>
+  <Accordion title="How does selector persistence work?">
+    When you use description-based targeting, OpenSteer:
+    
+    1. First tries to reuse a persisted selector from previous runs
+    2. Falls back to snapshot counter (`element` parameter)
+    3. Falls back to explicit CSS selector (`selector` parameter)
+    4. Uses LLM resolution if needed
+    5. Saves the resolved selector to `.opensteer/selectors/<namespace>/`
+    
+    On subsequent runs, the saved selector is reused, making scripts deterministic.
+  </Accordion>
+
+  <Accordion title="Where are selectors stored?">
+    Selectors are cached in `.opensteer/selectors/<namespace>/` relative to your project root.
+    
+    The namespace is determined by the `name` parameter:
+    ```typescript
+    const opensteer = new Opensteer({ name: "my-scraper" });
+    ```
+    
+    Selectors are stored as JSON files with the description as the key.
+  </Accordion>
+
+  <Accordion title="Can I clear selector cache?">
+    Yes. Simply delete the `.opensteer/selectors/<namespace>/` directory:
+    
+    ```bash
+    rm -rf .opensteer/selectors/my-scraper
+    ```
+    
+    On the next run, selectors will be resolved again and saved.
+  </Accordion>
+
+  <Accordion title="What happens if the page structure changes?">
+    If a persisted selector no longer works (page structure changed), OpenSteer will:
+    
+    1. Try the saved selector
+    2. Fail to find the element
+    3. Fall back to LLM resolution
+    4. Update the cached selector with the new one
+    
+    You can also manually clear the selector cache and re-run to force re-resolution.
+  </Accordion>
+</AccordionGroup>
+
+## AI Agent Integration
+
+<AccordionGroup>
+  <Accordion title="How do I integrate OpenSteer with AI agents?">
+    Follow this workflow:
+    
+    1. Use OpenSteer APIs instead of raw Playwright calls
+    2. Keep namespace consistent (SDK `name` = CLI `--name`)
+    3. Take `snapshot({ mode: "action" })` before actions
+    4. Take `snapshot({ mode: "extraction" })` before extraction
+    5. Prefer `description` targeting for persistence
+    6. Always wrap in `try/finally` and call `close()`
+    
+    See the [AI Integration guide](/examples/ai-integration) for complete examples.
+  </Accordion>
+
+  <Accordion title="What are OpenSteer skills?">
+    Skills are domain-specific instruction sets that help AI agents understand and use OpenSteer effectively.
+    
+    Install the OpenSteer skill pack:
+    ```bash
+    opensteer skills install
+    ```
+    
+    Available skills:
+    - `opensteer` - Core OpenSteer integration
+    - `electron` - Electron app automation
+    
+    For Claude Code:
+    ```text
+    /plugin marketplace add steerlabs/opensteer
+    /plugin install opensteer@opensteer-marketplace
+    ```
+  </Accordion>
+
+  <Accordion title="What is CUA agent support?">
+    CUA (Computer Use Agent) support enables OpenSteer to work with AI models that can control computers:
+    
+    ```typescript
+    const opensteer = new Opensteer({ 
+      model: "openai/computer-use-preview" 
+    });
+    
+    const agent = opensteer.agent({ mode: "cua" });
+    
+    const result = await agent.execute({
+      instruction: "Go to Hacker News and summarize the top story",
+      maxSteps: 20,
+    });
+    ```
+    
+    Supported providers: `openai`, `anthropic`, `google`
+  </Accordion>
+
+  <Accordion title="What snapshot mode should I use?">
+    **Action mode** (`mode: "action"`):
+    - For interaction planning
+    - Includes `c="..."` counters on interactive elements
+    - Use before `click()`, `input()`, `select()`, etc.
+    
+    **Extraction mode** (`mode: "extraction"`):
+    - For data gathering
+    - Optimized for content structure
+    - Use before `extract()`
+  </Accordion>
+</AccordionGroup>
+
+## Browser Setup
+
+<AccordionGroup>
+  <Accordion title="How do I install browser binaries?">
+    OpenSteer uses Playwright's browser binaries. Install them with:
+    
+    ```bash
+    npx playwright install chromium
+    ```
+    
+    For all browsers:
+    ```bash
+    npx playwright install
+    ```
+  </Accordion>
+
+  <Accordion title="Can I use a different browser?">
+    Yes. OpenSteer supports Chromium, Firefox, and WebKit through Playwright.
+    
+    Specify the browser when launching:
+    ```typescript
+    await opensteer.launch({ 
+      browserType: "firefox",
+      headless: false 
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="How do I run in headless mode?">
+    Set `headless: true` when launching:
+    
+    ```typescript
+    await opensteer.launch({ headless: true });
+    ```
+    
+    Headless mode is faster and uses fewer resources, ideal for production.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Element not found errors">
+    If you get element not found errors:
+    
+    1. Take a snapshot and verify the element exists:
+    ```typescript
+    const html = await opensteer.snapshot({ mode: "action" });
+    console.log(html);
+    ```
+    
+    2. Check if the element counter is correct
+    3. Clear selector cache if page structure changed:
+    ```bash
+    rm -rf .opensteer/selectors/<namespace>
+    ```
+    
+    4. Provide a more specific description
+  </Accordion>
+
+  <Accordion title="LLM resolution failing">
+    If LLM resolution isn't working:
+    
+    1. Verify your API key is set:
+    ```bash
+    echo $OPENAI_API_KEY
+    # or
+    echo $ANTHROPIC_API_KEY
+    ```
+    
+    2. Check that the model is configured:
+    ```typescript
+    const opensteer = new Opensteer({ 
+      name: "my-app",
+      model: "gpt-5.1" 
+    });
+    ```
+    
+    3. Verify the description is clear and specific
+    4. Take a snapshot to ensure the element is present
+  </Accordion>
+
+  <Accordion title="Timeout errors">
+    If actions are timing out:
+    
+    1. Increase the timeout:
+    ```typescript
+    await opensteer.click({ 
+      description: "slow button",
+      timeout: 30000  // 30 seconds
+    });
+    ```
+    
+    2. Wait for the page to load completely before interacting:
+    ```typescript
+    await opensteer.goto("https://example.com");
+    await opensteer.waitForLoadState("networkidle");
+    ```
+    
+    3. Check if the element is blocked by overlays or modals
+  </Accordion>
+
+  <Accordion title="Cloud mode not working">
+    If cloud mode fails:
+    
+    1. Verify your API key:
+    ```bash
+    echo $OPENSTEER_API_KEY
+    ```
+    
+    2. Check the mode is set:
+    ```bash
+    echo $OPENSTEER_MODE  # Should be "cloud"
+    ```
+    
+    3. Verify you're not using local-only features:
+    - `uploadFile()`
+    - `exportCookies()`
+    - `importCookies()`
+    - `Opensteer.from(page)`
+    
+    4. Check OpenSteer service status
+  </Accordion>
+
+  <Accordion title="Session routing errors (CLI)">
+    If CLI commands can't find a session:
+    
+    1. For interactive use, open a session first:
+    ```bash
+    opensteer open https://example.com --session demo
+    ```
+    
+    2. For non-interactive use, set session explicitly:
+    ```bash
+    export OPENSTEER_SESSION=my-session
+    # or
+    export OPENSTEER_CLIENT_ID=my-client
+    ```
+    
+    3. Verify session is active:
+    ```bash
+    opensteer status --session demo
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+<AccordionGroup>
+  <Accordion title="What environment variables does OpenSteer use?">
+    **Model configuration**:
+    - `OPENSTEER_MODEL` - LLM model (default: `gpt-5.1`)
+    
+    **Cloud mode**:
+    - `OPENSTEER_MODE` - Set to `local` or `cloud` (default: `local`)
+    - `OPENSTEER_API_KEY` - Your OpenSteer API key
+    - `OPENSTEER_BASE_URL` - Override cloud host
+    - `OPENSTEER_AUTH_SCHEME` - `api-key` (default) or `bearer`
+    
+    **Session management**:
+    - `OPENSTEER_SESSION` - Session identifier for CLI
+    - `OPENSTEER_CLIENT_ID` - Client-scoped default session
+    
+    **Other**:
+    - `OPENSTEER_DISABLE_DOTENV_AUTOLOAD` - Disable automatic `.env` loading
+  </Accordion>
+
+  <Accordion title="Does OpenSteer load .env files automatically?">
+    Yes. OpenSteer automatically loads `.env` files from `storage.rootDir` (default `process.cwd()`) in this order:
+    
+    1. `.env.<NODE_ENV>.local`
+    2. `.env.local` (skipped when `NODE_ENV=test`)
+    3. `.env.<NODE_ENV>`
+    4. `.env`
+    
+    Existing `process.env` values are never overwritten.
+    
+    To disable:
+    ```bash
+    OPENSTEER_DISABLE_DOTENV_AUTOLOAD=true
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Discussions" icon="comments" href="https://github.com/steerlabs/opensteer/discussions">
+    Ask questions and share ideas
+  </Card>
+  <Card title="Issues" icon="bug" href="https://github.com/steerlabs/opensteer/issues">
+    Report bugs and request features
+  </Card>
+  <Card title="Documentation" icon="book" href="/introduction">
+    Read the full documentation
+  </Card>
+  <Card title="Examples" icon="code" href="/examples/basic-usage">
+    Explore code examples
+  </Card>
+</CardGroup>

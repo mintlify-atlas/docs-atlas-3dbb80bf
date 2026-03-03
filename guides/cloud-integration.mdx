@@ -1,0 +1,478 @@
+---
+title: Cloud Integration
+description: Run OpenSteer browser automation in cloud mode for scalable, managed infrastructure with the same API as local mode.
+---
+
+## Overview
+
+OpenSteer cloud mode provides managed browser infrastructure with the same API surface as local mode. Enable cloud execution with simple configuration - no code changes required.
+
+## Configuration
+
+### Environment Variables
+
+The simplest way to enable cloud mode:
+
+```bash
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key
+```
+
+### Additional Options
+
+```bash
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key
+OPENSTEER_BASE_URL=https://api.opensteer.com  # Override default
+OPENSTEER_AUTH_SCHEME=api-key                  # or 'bearer'
+OPENSTEER_REMOTE_ANNOUNCE=always               # always, off, tty
+```
+
+### Using .env Files
+
+OpenSteer automatically loads `.env` files from your project root:
+
+```bash
+# .env
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key
+```
+
+**Loading order:**
+1. `.env.<NODE_ENV>.local`
+2. `.env.local` (skipped when `NODE_ENV=test`)
+3. `.env.<NODE_ENV>`
+4. `.env`
+
+Existing `process.env` values are never overwritten.
+
+<Info>
+Disable auto-loading with `OPENSTEER_DISABLE_DOTENV_AUTOLOAD=true`
+</Info>
+
+### Programmatic Configuration
+
+Force cloud mode in code:
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY,
+    baseUrl: 'https://api.opensteer.com',
+    authScheme: 'api-key',  // or 'bearer'
+    announce: 'always'      // or 'off', 'tty'
+  }
+})
+```
+
+<Warning>
+The `cloud` constructor option overrides `OPENSTEER_MODE` environment variable.
+</Warning>
+
+## Authentication Schemes
+
+### API Key (Default)
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: 'ork_your_key',
+    authScheme: 'api-key'
+  }
+})
+```
+
+### Bearer Token
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: 'your_bearer_token',
+    authScheme: 'bearer'
+  }
+})
+```
+
+## Session Management
+
+### Creating Sessions
+
+Sessions are created automatically when you launch:
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: { apiKey: process.env.OPENSTEER_API_KEY }
+})
+
+await opensteer.launch()
+```
+
+### Getting Session Information
+
+Retrieve session ID and URL after launch:
+
+```typescript
+await opensteer.launch()
+
+const sessionId = opensteer.getCloudSessionId()
+const sessionUrl = opensteer.getCloudSessionUrl()
+
+console.log('Session ID:', sessionId)
+console.log('Session URL:', sessionUrl)
+```
+
+<Tip>
+Use the session URL to view browser sessions in the cloud dashboard.
+</Tip>
+
+### Closing Sessions
+
+Sessions are automatically closed when you call `close()`:
+
+```typescript
+try {
+  await opensteer.launch()
+  // ... automation steps
+} finally {
+  await opensteer.close()  // Closes cloud session
+}
+```
+
+## Announcement Policies
+
+Control when cloud session URLs are announced:
+
+### Always (Default)
+
+Always print session URLs:
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY,
+    announce: 'always'
+  }
+})
+```
+
+### TTY Only
+
+Only print when running in a terminal:
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY,
+    announce: 'tty'
+  }
+})
+```
+
+### Off
+
+Never print session URLs:
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: {
+    apiKey: process.env.OPENSTEER_API_KEY,
+    announce: 'off'
+  }
+})
+```
+
+## Cloud API Contract
+
+### Control API Endpoints
+
+<CodeGroup>
+```http Create Session
+POST /sessions
+Content-Type: application/json
+
+{
+  "cloudSessionContractVersion": "v3",
+  "sourceType": "local-cloud",
+  "clientSessionHint": "string",
+  "localRunId": "string"
+}
+```
+
+```http Get Session
+GET /sessions/:sessionId
+```
+
+```http Delete Session
+DELETE /sessions/:sessionId
+```
+
+```http Import Selector Cache
+POST /selector-cache/import
+```
+</CodeGroup>
+
+### WebSocket Endpoints
+
+- `/ws/action/:sessionId` - Action execution
+- `/ws/cdp/:sessionId` - Chrome DevTools Protocol
+
+### Runtime Internal Endpoints
+
+- `POST /internal/sessions`
+- `GET /internal/sessions/:sessionId`
+- `DELETE /internal/sessions/:sessionId`
+- `POST /internal/sessions/:sessionId/access`
+
+## Local vs Cloud Feature Comparison
+
+<ResponseField name="Browser Automation" type="✓">
+  Fully supported in both local and cloud modes
+</ResponseField>
+
+<ResponseField name="Data Extraction" type="✓">
+  Fully supported in both local and cloud modes
+</ResponseField>
+
+<ResponseField name="CUA Agent" type="✓">
+  Fully supported in both local and cloud modes
+</ResponseField>
+
+<ResponseField name="Opensteer.from(page)" type="Local only">
+  Not supported in cloud mode - requires local page reference
+</ResponseField>
+
+<ResponseField name="uploadFile()" type="Local only">
+  Not supported in cloud mode - requires local filesystem access
+</ResponseField>
+
+<ResponseField name="exportCookies()" type="Local only">
+  Not supported in cloud mode - requires local filesystem access
+</ResponseField>
+
+<ResponseField name="importCookies()" type="Local only">
+  Not supported in cloud mode - requires local filesystem access
+</ResponseField>
+
+## Complete Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+async function run() {
+  const opensteer = new Opensteer({
+    name: 'cloud-scraper',
+    cloud: {
+      apiKey: process.env.OPENSTEER_API_KEY,
+      announce: 'always'
+    }
+  })
+
+  try {
+    await opensteer.launch()
+    
+    // Get session info
+    const sessionId = opensteer.getCloudSessionId()
+    const sessionUrl = opensteer.getCloudSessionUrl()
+    console.log('Cloud session:', sessionId)
+    console.log('View at:', sessionUrl)
+
+    // Automation works the same as local mode
+    await opensteer.goto('https://example.com')
+    
+    await opensteer.snapshot({ mode: 'extraction' })
+    
+    const data = await opensteer.extract({
+      description: 'page content',
+      schema: {
+        title: '',
+        description: ''
+      }
+    })
+    
+    console.log('Extracted:', data)
+  } finally {
+    await opensteer.close()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+```
+
+## Error Handling
+
+### Fail-Fast Behavior
+
+<Warning>
+Cloud mode is fail-fast and does not automatically fall back to local mode.
+</Warning>
+
+```typescript
+try {
+  const opensteer = new Opensteer({
+    cloud: { apiKey: 'invalid_key' }
+  })
+  await opensteer.launch()
+} catch (error) {
+  // Cloud authentication or connection failed
+  console.error('Cloud mode failed:', error)
+  // Does NOT fall back to local
+}
+```
+
+### Checking Cloud Status
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: { apiKey: process.env.OPENSTEER_API_KEY }
+})
+
+try {
+  await opensteer.launch()
+  
+  if (opensteer.getCloudSessionId()) {
+    console.log('Running in cloud mode')
+  }
+} catch (error) {
+  console.error('Failed to launch:', error)
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use environment variables for API keys">
+    ```typescript
+    // Good - never commit API keys
+    const opensteer = new Opensteer({
+      cloud: { apiKey: process.env.OPENSTEER_API_KEY }
+    })
+    
+    // Bad - hardcoded credentials
+    const opensteer = new Opensteer({
+      cloud: { apiKey: 'ork_your_key' }
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="Store session URLs for debugging">
+    ```typescript
+    await opensteer.launch()
+    
+    const sessionUrl = opensteer.getCloudSessionUrl()
+    
+    // Log for debugging
+    console.log('Session URL:', sessionUrl)
+    
+    // Or store in database for audit trail
+    await db.sessions.create({
+      url: sessionUrl,
+      timestamp: new Date()
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="Use same code for local and cloud">
+    ```typescript
+    // Automatically switches based on OPENSTEER_MODE env
+    const opensteer = new Opensteer({ name: 'scraper' })
+    
+    try {
+      await opensteer.launch()
+      // ... same automation code works in both modes
+    } finally {
+      await opensteer.close()
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Set appropriate announcement policy">
+    ```typescript
+    // Development - always show URLs
+    const opensteer = new Opensteer({
+      cloud: {
+        apiKey: process.env.OPENSTEER_API_KEY,
+        announce: 'always'
+      }
+    })
+    
+    // Production - suppress URLs in logs
+    const opensteer = new Opensteer({
+      cloud: {
+        apiKey: process.env.OPENSTEER_API_KEY,
+        announce: 'off'
+      }
+    })
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Transitioning from Local to Cloud
+
+### 1. Update Configuration
+
+Add cloud credentials to `.env`:
+
+```bash
+# Before (local mode)
+# No special config needed
+
+# After (cloud mode)
+OPENSTEER_MODE=cloud
+OPENSTEER_API_KEY=ork_your_key
+```
+
+### 2. Remove Unsupported Features
+
+Replace local-only methods:
+
+```typescript
+// Before (local mode)
+await opensteer.uploadFile({ description: 'file input', paths: ['./file.pdf'] })
+await opensteer.exportCookies('./cookies.json')
+
+// After (cloud mode)
+// Use alternative approaches or handle in application layer
+```
+
+### 3. Test Thoroughly
+
+Verify all automation works in cloud:
+
+```typescript
+const opensteer = new Opensteer({
+  cloud: { apiKey: process.env.OPENSTEER_API_KEY }
+})
+
+try {
+  await opensteer.launch()
+  
+  // Run full test suite
+  await runTests(opensteer)
+  
+  console.log('Cloud mode working correctly')
+} finally {
+  await opensteer.close()
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browser Automation" icon="browser" href="/guides/browser-automation">
+    Learn core automation features
+  </Card>
+  <Card title="Data Extraction" icon="database" href="/guides/data-extraction">
+    Extract structured data in cloud mode
+  </Card>
+  <Card title="CUA Agent" icon="wand-magic-sparkles" href="/guides/cua-agent">
+    Use Computer Use Agents in the cloud
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    Integrate with AI agent workflows
+  </Card>
+</CardGroup>

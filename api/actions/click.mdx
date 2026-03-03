@@ -1,0 +1,147 @@
+---
+title: click
+description: Click on elements with precise control over mouse buttons, click counts, and modifiers
+---
+
+## Method Signature
+
+```typescript
+await opensteer.click(options: ClickOptions): Promise<ActionResult>
+```
+
+Clicks on an element in the browser. Supports left, right, middle clicks, double-clicks, and modifier keys.
+
+## Parameters
+
+<ParamField path="options" type="ClickOptions" required>
+  Configuration for the click action
+  
+  <Expandable title="ClickOptions properties">
+    <ParamField path="description" type="string">
+      Natural language description of the element to click. Used for AI-powered element resolution when `element` or `selector` are not provided.
+    </ParamField>
+    
+    <ParamField path="element" type="number">
+      Counter number from snapshot HTML to identify the exact element.
+    </ParamField>
+    
+    <ParamField path="selector" type="string">
+      CSS selector to identify the element.
+    </ParamField>
+    
+    <ParamField path="button" type="'left' | 'right' | 'middle'" default="'left'">
+      Which mouse button to use for the click.
+    </ParamField>
+    
+    <ParamField path="clickCount" type="number" default="1">
+      Number of times to click (e.g., 2 for double-click).
+    </ParamField>
+    
+    <ParamField path="modifiers" type="Array<'Alt' | 'Control' | 'Meta' | 'Shift'>">
+      Modifier keys to hold during the click.
+    </ParamField>
+    
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Set to `false` to disable waiting, or provide options to customize wait behavior.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ActionResult" type="Promise<ActionResult>">
+  <Expandable title="ActionResult properties">
+    <ResponseField name="method" type="string">
+      The action method name ("click")
+    </ResponseField>
+    
+    <ResponseField name="namespace" type="string">
+      The namespace identifier for this session
+    </ResponseField>
+    
+    <ResponseField name="persisted" type="boolean">
+      Whether the element path was successfully persisted for future use
+    </ResponseField>
+    
+    <ResponseField name="pathFile" type="string | null">
+      Path to the file where element path is stored
+    </ResponseField>
+    
+    <ResponseField name="selectorUsed" type="string | null">
+      The actual selector used to find the element
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Click
+
+```typescript
+// Click using AI-powered element detection
+await opensteer.click({
+  description: 'Submit button'
+})
+```
+
+### Click with Selector
+
+```typescript
+// Click using CSS selector
+await opensteer.click({
+  selector: '#submit-btn',
+  description: 'Submit button'
+})
+```
+
+### Right Click
+
+```typescript
+// Right-click to open context menu
+await opensteer.click({
+  description: 'File item',
+  button: 'right'
+})
+```
+
+### Double Click
+
+```typescript
+// Double-click to select word
+await opensteer.click({
+  description: 'Text editor',
+  clickCount: 2
+})
+```
+
+### Click with Modifiers
+
+```typescript
+// Ctrl+Click for multi-select
+await opensteer.click({
+  description: 'List item 3',
+  modifiers: ['Control']
+})
+
+// Shift+Click to select range
+await opensteer.click({
+  description: 'Last item',
+  modifiers: ['Shift']
+})
+```
+
+### Click with Element Counter
+
+```typescript
+// Use element counter from snapshot
+await opensteer.click({
+  element: 42,
+  description: 'Login button'
+})
+```
+
+## Related methods
+
+- [hover](/api/actions/hover) - Hover over elements without clicking
+- [input](/api/actions/input) - Fill text into input fields
+- [select](/api/actions/select) - Select dropdown options

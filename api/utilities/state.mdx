@@ -1,0 +1,191 @@
+---
+title: 'Page State & Screenshots'
+description: 'Get current page state and capture screenshots'
+---
+
+## Overview
+
+OpenSteer provides methods to retrieve the current page state and capture screenshots.
+
+## Methods
+
+### state
+
+Returns the current state of the page including URL, title, and HTML content.
+
+```typescript
+await opensteer.state(): Promise<StateResult>
+```
+
+<ResponseField name="StateResult" type="object">
+  Object containing current page state
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+
+const state = await opensteer.state()
+console.log(`URL: ${state.url}`)
+console.log(`Title: ${state.title}`)
+console.log(`HTML length: ${state.html.length}`)
+
+await opensteer.close()
+```
+
+### screenshot
+
+Captures a screenshot of the current page.
+
+```typescript
+await opensteer.screenshot(options?: ScreenshotOptions): Promise<Buffer>
+```
+
+<ParamField path="options" type="ScreenshotOptions">
+  Optional configuration for the screenshot
+</ParamField>
+
+<ParamField path="options.fullPage" type="boolean">
+  Whether to capture the full scrollable page. Default: `false`
+</ParamField>
+
+<ParamField path="options.type" type="'png' | 'jpeg'">
+  Image format. Default: `'png'`
+</ParamField>
+
+<ParamField path="options.quality" type="number">
+  JPEG quality (0-100). Only applies when `type` is `'jpeg'`. Default: `90`
+</ParamField>
+
+<ParamField path="options.omitBackground" type="boolean">
+  Whether to omit the default white background. Default: `false`
+</ParamField>
+
+<ResponseField name="Buffer" type="Buffer">
+  Image data as a Node.js Buffer
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+import { writeFile } from 'fs/promises'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+
+// Capture viewport screenshot
+const screenshot = await opensteer.screenshot()
+await writeFile('screenshot.png', screenshot)
+
+// Capture full page screenshot
+const fullPage = await opensteer.screenshot({ fullPage: true })
+await writeFile('fullpage.png', fullPage)
+
+// Capture JPEG with custom quality
+const jpeg = await opensteer.screenshot({
+  type: 'jpeg',
+  quality: 80
+})
+await writeFile('screenshot.jpg', jpeg)
+
+await opensteer.close()
+```
+
+## Types
+
+### StateResult
+
+The state of the current page:
+
+```typescript
+interface StateResult {
+  url: string
+  title: string
+  html: string
+}
+```
+
+<ResponseField name="url" type="string">
+  Current URL of the page
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Title of the page
+</ResponseField>
+
+<ResponseField name="html" type="string">
+  HTML content of the page (cleaned snapshot)
+</ResponseField>
+
+### ScreenshotOptions
+
+Configuration options for screenshots:
+
+```typescript
+interface ScreenshotOptions {
+  fullPage?: boolean
+  type?: 'png' | 'jpeg'
+  quality?: number
+  omitBackground?: boolean
+}
+```
+
+<ResponseField name="fullPage" type="boolean">
+  Capture the full scrollable page instead of just the viewport
+</ResponseField>
+
+<ResponseField name="type" type="'png' | 'jpeg'">
+  Image format
+</ResponseField>
+
+<ResponseField name="quality" type="number">
+  JPEG quality from 0 to 100. Ignored for PNG images
+</ResponseField>
+
+<ResponseField name="omitBackground" type="boolean">
+  Hides default white background and allows capturing screenshots with transparency
+</ResponseField>
+
+### BoundingBox
+
+Represents the position and dimensions of an element:
+
+```typescript
+interface BoundingBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+```
+
+<ResponseField name="x" type="number">
+  X coordinate of the element in pixels
+</ResponseField>
+
+<ResponseField name="y" type="number">
+  Y coordinate of the element in pixels
+</ResponseField>
+
+<ResponseField name="width" type="number">
+  Width of the element in pixels
+</ResponseField>
+
+<ResponseField name="height" type="number">
+  Height of the element in pixels
+</ResponseField>
+
+## Related methods
+
+- [snapshot()](/api/extraction/snapshot) - Get cleaned HTML snapshot with counters
+- [goto()](/api/navigation) - Navigate to different pages
+- [screenshot()](/api/utilities/state#screenshot) - Capture page screenshot

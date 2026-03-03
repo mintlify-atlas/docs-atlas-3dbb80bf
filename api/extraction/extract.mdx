@@ -1,0 +1,290 @@
+---
+title: extract()
+description: Extract structured data from the page using schemas with element references or AI-driven extraction
+---
+
+## Signature
+
+```typescript
+extract<TData = unknown>(options: ExtractOptions<TSchema>): Promise<TData>
+```
+
+Extract structured data from the current page using a schema with element references, CSS selectors, or AI-driven extraction. The method automatically resolves field targets from the schema and extracts values from the DOM.
+
+## Parameters
+
+<ParamField path="options" type="ExtractOptions<TSchema>" required>
+  Extraction configuration object
+
+  <Expandable title="properties">
+    <ParamField path="schema" type="ExtractSchema">
+      Schema defining the data structure to extract. Fields can reference DOM elements via `element` counters, CSS `selector` strings, or special sources like `current_url`. Nested objects and arrays are supported.
+    </ParamField>
+
+    <ParamField path="description" type="string">
+      Optional description for caching the extraction paths. When provided, resolved element paths are persisted to disk for deterministic replay on subsequent runs.
+    </ParamField>
+
+    <ParamField path="prompt" type="string">
+      Additional prompt text to guide AI extraction when the schema alone is insufficient.
+    </ParamField>
+
+    <ParamField path="snapshot" type="SnapshotOptions">
+      Options for the HTML snapshot used during AI extraction planning. Defaults to `{ mode: 'extraction', withCounters: true }`.
+    </ParamField>
+
+    <ParamField path="element" type="number">
+      Counter value from a previous snapshot. Overrides persisted paths and schema resolution.
+    </ParamField>
+
+    <ParamField path="selector" type="string">
+      CSS selector to locate the extraction root. Overrides persisted paths.
+    </ParamField>
+
+    <ParamField path="wait" type="false | ActionWaitOptions">
+      Post-action wait configuration. Not typically used for extraction, but available for consistency.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="data" type="TData">
+  The extracted data matching the schema structure. Nested objects and arrays are fully resolved.
+</ResponseField>
+
+## Examples
+
+### Basic field extraction with element counters
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+await opensteer.goto('https://example.com/product')
+
+const html = await opensteer.snapshot({ mode: 'extraction' })
+// Review HTML to find element counters (c="3", c="5", etc.)
+
+const product = await opensteer.extract({
+  schema: {
+    title: { element: 3 },
+    price: { element: 5, attribute: 'data-price' },
+    url: { source: 'current_url' },
+  },
+})
+
+console.log(product)
+// { title: 'Premium Widget', price: '29.99', url: 'https://example.com/product' }
+```
+
+### Extraction with CSS selectors
+
+```typescript
+const article = await opensteer.extract({
+  schema: {
+    headline: { selector: 'h1.article-title' },
+    author: { selector: '.author-name' },
+    publishDate: { selector: 'time', attribute: 'datetime' },
+    body: { selector: '.article-content' },
+  },
+})
+```
+
+### Nested object extraction
+
+```typescript
+const listing = await opensteer.extract({
+  description: 'property-listing',
+  schema: {
+    address: {
+      street: { element: 10 },
+      city: { element: 11 },
+      zip: { element: 12 },
+    },
+    pricing: {
+      current: { element: 20 },
+      original: { element: 21 },
+    },
+    features: [
+      { name: { element: 30 }, value: { element: 31 } },
+    ],
+  },
+})
+```
+
+### Persisted extraction with description
+
+```typescript
+// First run: resolves paths and persists to .opensteer/selectors/
+const data = await opensteer.extract({
+  description: 'product-info',
+  schema: {
+    title: { selector: 'h1.product-title' },
+    price: { selector: '.price' },
+    stock: { selector: '.stock-status' },
+  },
+})
+
+// Subsequent runs: loads cached paths from disk
+// Works even if element counters or DOM structure changes slightly
+const updatedData = await opensteer.extract({
+  description: 'product-info',
+  schema: {
+    title: { selector: 'h1.product-title' },
+    price: { selector: '.price' },
+    stock: { selector: '.stock-status' },
+  },
+})
+```
+
+### AI-driven extraction without explicit schema
+
+```typescript
+// AI extracts data based on page content and prompt
+const summary = await opensteer.extract({
+  prompt: 'Extract the main product details including name, price, and availability',
+})
+
+console.log(summary)
+// AI returns structured data matching the prompt
+```
+
+### Extracting arrays of items
+
+```typescript
+const results = await opensteer.extract({
+  description: 'search-results',
+  schema: {
+    items: [
+      {
+        title: { selector: 'h2.result-title' },
+        link: { selector: 'a.result-link', attribute: 'href' },
+        snippet: { selector: '.result-snippet' },
+      },
+    ],
+  },
+})
+
+console.log(results.items)
+// Array of objects with title, link, and snippet
+```
+
+## Schema Structure
+
+The `ExtractSchema` supports multiple field types:
+
+### Element counter field
+```typescript
+{ element: 3, attribute?: 'href' }
+```
+
+### CSS selector field
+```typescript
+{ selector: '.price', attribute?: 'data-value' }
+```
+
+### Special source field
+```typescript
+{ source: 'current_url' }
+```
+
+### Nested object
+```typescript
+{
+  user: {
+    name: { element: 5 },
+    email: { element: 6 },
+  },
+}
+```
+
+### Array of objects
+```typescript
+{
+  results: [
+    {
+      title: { selector: '.title' },
+      link: { selector: 'a', attribute: 'href' },
+    },
+  ],
+}
+```
+
+### Literal values
+```typescript
+{
+  type: 'product',
+  version: 2,
+  available: true,
+}
+```
+
+## Resolution Chain
+
+The extraction method follows this resolution order:
+
+1. **Persisted paths** - If `description` is provided and matching paths exist in `.opensteer/selectors/`, those are used
+2. **Schema hints** - Element counters, selectors, and sources in the schema are resolved directly
+3. **AI planning** - If no deterministic targets are found, the AI analyzes the page and generates an extraction plan
+4. **Field extraction** - Resolved targets are used to extract values from the DOM
+
+## Caching and Persistence
+
+When `description` is provided:
+- Element paths are persisted to `.opensteer/selectors/{namespace}/{description}.json`
+- Schema hash is stored to detect changes
+- Subsequent runs with matching description and schema load cached paths
+- Delete the cached file to force re-extraction
+
+## Type Safety
+
+```typescript
+interface Product {
+  title: string
+  price: string
+  url: string
+}
+
+const product = await opensteer.extract<Product>({
+  schema: {
+    title: { element: 3 },
+    price: { element: 5 },
+    url: { source: 'current_url' },
+  },
+})
+
+// product is typed as Product
+console.log(product.title)
+```
+
+## Error Handling
+
+```typescript
+try {
+  const data = await opensteer.extract({
+    description: 'product-data',
+    schema: {
+      title: { selector: '.missing-element' },
+    },
+  })
+} catch (error) {
+  // Extraction may fail if:
+  // - Required elements are not found
+  // - Selectors are invalid
+  // - AI extraction planning fails
+  // - Cached selector is incompatible with current schema
+  console.error('Extraction failed:', error.message)
+}
+```
+
+## Related Types
+
+See [Schema Types](/api/extraction/schemas) for detailed schema field options and [ExtractionPlan](/api/extraction/schemas#extraction-plan) for two-phase extraction.
+
+## See Also
+
+- [extractFromPlan()](/api/extraction/schemas#extract-from-plan) - Extract using a pre-built plan
+- [snapshot()](/api/extraction/snapshot) - Capture page HTML with element counters
+- [Schema reference](/api/extraction/schemas) - Complete schema type definitions

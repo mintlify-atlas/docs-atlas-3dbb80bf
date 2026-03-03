@@ -1,0 +1,228 @@
+---
+title: 'agent.execute()'
+description: 'Execute agent tasks with natural language instructions'
+icon: 'play'
+---
+
+## Method Signature
+
+```typescript
+agent.execute(instructionOrOptions: string | OpensteerAgentExecuteOptions): Promise<OpensteerAgentResult>
+```
+
+Execute an agent task with a natural language instruction. The agent will analyze the browser state, decide on actions, and execute them until the task is complete or max steps is reached.
+
+## Parameters
+
+You can pass either a string instruction or an options object:
+
+### String Parameter
+
+```typescript
+await agent.execute('Search for OpenSteer documentation')
+```
+
+### Options Object
+
+<ParamField path="instruction" type="string" required>
+  Natural language instruction describing the task to complete. Must be a non-empty string.
+</ParamField>
+
+<ParamField path="maxSteps" type="number" default={20}>
+  Maximum number of actions the agent can take. Must be a positive integer. Prevents infinite loops and controls execution cost.
+</ParamField>
+
+<ParamField path="highlightCursor" type="boolean" default={false}>
+  When `true`, displays a red cursor overlay at the action coordinates during execution. Useful for debugging and demonstrations.
+</ParamField>
+
+## Return Type
+
+Returns a `Promise<OpensteerAgentResult>` with the following fields:
+
+<ResponseField name="success" type="boolean" required>
+  Whether the agent execution completed without errors. `false` indicates a failure (API error, invalid action, etc.).
+</ResponseField>
+
+<ResponseField name="completed" type="boolean" required>
+  Whether the agent finished the task successfully. `false` when max steps reached before completion.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable message describing the result. Contains completion message or error details.
+</ResponseField>
+
+<ResponseField name="actions" type="OpensteerAgentAction[]" required>
+  Array of actions taken by the agent during execution. Each action includes type, coordinates, reasoning, and metadata.
+</ResponseField>
+
+<ResponseField name="usage" type="OpensteerAgentUsage | undefined">
+  Token and time usage statistics for the execution.
+  
+  <Expandable title="OpensteerAgentUsage fields">
+    <ResponseField name="inputTokens" type="number">
+      Number of input tokens consumed.
+    </ResponseField>
+    <ResponseField name="outputTokens" type="number">
+      Number of output tokens generated.
+    </ResponseField>
+    <ResponseField name="reasoningTokens" type="number | undefined">
+      Number of reasoning tokens used (provider-specific, e.g., OpenAI extended thinking).
+    </ResponseField>
+    <ResponseField name="inferenceTimeMs" type="number">
+      Total inference time in milliseconds.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="provider" type="OpensteerAgentProvider" required>
+  The provider used for execution: `'openai'`, `'anthropic'`, or `'google'`.
+</ResponseField>
+
+<ResponseField name="model" type="string" required>
+  Full model name in `provider/model` format (e.g., `'openai/computer-use-preview'`).
+</ResponseField>
+
+## Action Types
+
+Each action in the `actions` array includes:
+
+<ResponseField name="type" type="string" required>
+  Action type: `'click'`, `'type'`, `'scroll'`, `'navigate'`, `'wait'`, `'screenshot'`, `'finish'`
+</ResponseField>
+
+<ResponseField name="reasoning" type="string | undefined">
+  Agent's reasoning for taking this action.
+</ResponseField>
+
+<ResponseField name="x" type="number | undefined">
+  X coordinate for click actions.
+</ResponseField>
+
+<ResponseField name="y" type="number | undefined">
+  Y coordinate for click actions.
+</ResponseField>
+
+<ResponseField name="text" type="string | undefined">
+  Text input for type actions.
+</ResponseField>
+
+<ResponseField name="scrollX" type="number | undefined">
+  Horizontal scroll delta.
+</ResponseField>
+
+<ResponseField name="scrollY" type="number | undefined">
+  Vertical scroll delta.
+</ResponseField>
+
+<ResponseField name="url" type="string | undefined">
+  URL for navigate actions.
+</ResponseField>
+
+<ResponseField name="timeMs" type="number | undefined">
+  Wait duration in milliseconds.
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const browser = new Opensteer()
+await browser.launch()
+await browser.goto('https://example.com')
+
+const agent = browser.agent({
+  mode: 'cua',
+  model: 'openai/computer-use-preview'
+})
+
+const result = await agent.execute('Click the login button')
+
+if (result.success && result.completed) {
+  console.log('✓ Task completed:', result.message)
+  console.log('Actions taken:', result.actions.length)
+} else if (result.success && !result.completed) {
+  console.warn('⚠ Max steps reached before completion')
+} else {
+  console.error('✗ Execution failed:', result.message)
+}
+
+await browser.close()
+```
+
+### With Options
+
+```typescript
+const result = await agent.execute({
+  instruction: 'Fill out the contact form with test data',
+  maxSteps: 30,
+  highlightCursor: true
+})
+
+console.log('Provider:', result.provider)
+console.log('Model:', result.model)
+
+if (result.usage) {
+  console.log('Input tokens:', result.usage.inputTokens)
+  console.log('Output tokens:', result.usage.outputTokens)
+  console.log('Inference time:', result.usage.inferenceTimeMs, 'ms')
+}
+
+for (const action of result.actions) {
+  console.log(`${action.type}: ${action.reasoning || 'N/A'}`)
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  const result = await agent.execute('Complete checkout process')
+  
+  if (!result.success) {
+    throw new Error(`Agent failed: ${result.message}`)
+  }
+  
+  if (!result.completed) {
+    console.warn('Task incomplete - may need more steps')
+  }
+  
+  return result
+} catch (error) {
+  console.error('Execution error:', error)
+  throw error
+}
+```
+
+### Analyzing Actions
+
+```typescript
+const result = await agent.execute('Search for products')
+
+const clickActions = result.actions.filter(a => a.type === 'click')
+const typeActions = result.actions.filter(a => a.type === 'type')
+const navigateActions = result.actions.filter(a => a.type === 'navigate')
+
+console.log(`Clicks: ${clickActions.length}`)
+console.log(`Text inputs: ${typeActions.length}`)
+console.log(`Navigations: ${navigateActions.length}`)
+
+// Print reasoning for each action
+for (const action of result.actions) {
+  if (action.reasoning) {
+    console.log(`[${action.type}] ${action.reasoning}`)
+  }
+}
+```
+
+## Notes
+
+- Agent execution is slower and more expensive than direct actions
+- Always set appropriate `maxSteps` to prevent runaway execution
+- Check both `success` and `completed` flags in the result
+- The `usage` field may be undefined depending on the provider
+- Actions are executed sequentially with `waitBetweenActionsMs` delay between them
+- The agent cannot be executed concurrently - only one execution at a time per agent instance

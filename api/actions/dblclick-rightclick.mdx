@@ -1,0 +1,154 @@
+---
+title: Double-click and right-click
+description: Convenience methods for double-clicking and right-clicking elements
+icon: mouse-pointer
+---
+
+## Overview
+
+OpenSteer provides convenience methods for double-clicking and right-clicking elements. These are shortcuts for using the main `click()` method with specific options.
+
+## `dblclick()`
+
+Double-click an element. Equivalent to `click({ ..., clickCount: 2 })`.
+
+```ts
+await opensteer.dblclick(options: ClickOptions): Promise<ActionResult>
+```
+
+<ParamField path="options" type="ClickOptions" required>
+  Same options as `click()` - supports description, element, selector, and other click options
+</ParamField>
+
+### Examples
+
+#### Double-click to select text
+
+```ts
+await opensteer.dblclick({ description: 'filename' })
+```
+
+#### Double-click with element counter
+
+```ts
+await opensteer.snapshot({ mode: 'action' })
+await opensteer.dblclick({ element: 7 })
+```
+
+#### Double-click with selector
+
+```ts
+await opensteer.dblclick({ selector: '.editable-cell' })
+```
+
+## `rightclick()`
+
+Right-click an element to open context menu. Equivalent to `click({ ..., button: 'right' })`.
+
+```ts
+await opensteer.rightclick(options: ClickOptions): Promise<ActionResult>
+```
+
+<ParamField path="options" type="ClickOptions" required>
+  Same options as `click()` - supports description, element, selector, and other click options
+</ParamField>
+
+### Examples
+
+#### Right-click to open context menu
+
+```ts
+await opensteer.rightclick({ description: 'image' })
+
+// Select menu option
+await opensteer.click({ description: 'Save image as' })
+```
+
+#### Right-click with element counter
+
+```ts
+await opensteer.snapshot({ mode: 'action' })
+await opensteer.rightclick({ element: 12 })
+```
+
+#### Right-click in editor
+
+```ts
+await opensteer.rightclick({ selector: '.code-editor' })
+await opensteer.click({ description: 'format document' })
+```
+
+## Comparison with `click()`
+
+These methods are pure convenience wrappers:
+
+```ts
+// These are equivalent:
+await opensteer.dblclick({ description: 'word' })
+await opensteer.click({ description: 'word', clickCount: 2 })
+
+// These are equivalent:
+await opensteer.rightclick({ description: 'file' })
+await opensteer.click({ description: 'file', button: 'right' })
+```
+
+Use whichever is more readable for your use case.
+
+## Common patterns
+
+### Text selection
+
+```ts
+// Double-click to select word
+await opensteer.dblclick({ description: 'paragraph' })
+
+// Copy selected text (Ctrl+C / Cmd+C)
+await opensteer.pressKey('Control+c')
+```
+
+### Context menu interaction
+
+```ts
+// Right-click element
+await opensteer.rightclick({ description: 'table row' })
+
+// Wait for menu to appear
+await opensteer.waitForText('Delete row')
+
+// Click menu option
+await opensteer.click({ description: 'Delete row' })
+
+// Confirm deletion
+await opensteer.click({ description: 'Confirm' })
+```
+
+### File operations
+
+```ts
+// Right-click file in file manager
+await opensteer.rightclick({ description: 'document.pdf' })
+
+// Open with specific application
+await opensteer.click({ description: 'Open with' })
+await opensteer.click({ description: 'Adobe Reader' })
+```
+
+### Canvas/diagram editing
+
+```ts
+// Double-click to edit
+await opensteer.dblclick({ description: 'text box' })
+
+// Type new content
+await opensteer.type('Updated text')
+
+// Click outside to finish editing
+await opensteer.click({ description: 'canvas background' })
+```
+
+## Related methods
+
+- [click()](/api/actions/click) - Main click method with all options
+- [hover()](/api/actions/hover) - Hover over elements
+- [pressKey()](/api/utilities/keyboard#presskey) - Press keyboard keys
+- [type()](/api/utilities/keyboard#type) - Type text character-by-character

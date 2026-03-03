@@ -1,0 +1,209 @@
+---
+title: Wait methods
+description: Wait for conditions and text to appear
+icon: clock
+---
+
+## Overview
+
+OpenSteer provides methods to wait for specific conditions before proceeding. This is useful for handling dynamic content, loading states, and asynchronous operations.
+
+## Methods
+
+### `waitForText()`
+
+Wait for specific text to appear anywhere on the page.
+
+```ts
+await opensteer.waitForText(text: string, options?: { timeout?: number }): Promise<void>
+```
+
+<ParamField path="text" type="string" required>
+  The text to wait for. Case-sensitive exact match.
+</ParamField>
+
+<ParamField path="options.timeout" type="number">
+  Maximum time to wait in milliseconds. Default: 30000 (30 seconds)
+</ParamField>
+
+### Examples
+
+#### Wait for success message
+
+```ts
+await opensteer.click({ description: 'submit button' })
+
+// Wait for confirmation
+await opensteer.waitForText('Order confirmed')
+
+console.log('Order was successful')
+```
+
+#### Wait with custom timeout
+
+```ts
+try {
+  // Wait up to 10 seconds
+  await opensteer.waitForText('Loading complete', { timeout: 10000 })
+} catch (error) {
+  console.error('Page took too long to load')
+}
+```
+
+#### Wait for error messages
+
+```ts
+await opensteer.click({ description: 'login button' })
+
+try {
+  // Check for either success or error
+  await Promise.race([
+    opensteer.waitForText('Welcome back'),
+    opensteer.waitForText('Invalid credentials')
+  ])
+  
+  const { html } = await opensteer.state()
+  if (html.includes('Welcome back')) {
+    console.log('Login successful')
+  } else {
+    console.log('Login failed')
+  }
+} catch (error) {
+  console.error('Timeout waiting for login result')
+}
+```
+
+## Common patterns
+
+### Wait after actions
+
+Actions automatically wait for page stability, but you may need additional waits for specific content:
+
+```ts
+// Click button
+await opensteer.click({ description: 'load more' })
+
+// Wait for new content
+await opensteer.waitForText('Showing 20 items')
+
+// Now safe to extract
+const data = await opensteer.extract({
+  schema: { items: ['string'] }
+})
+```
+
+### Form submission workflow
+
+```ts
+await opensteer.input({ description: 'email', text: 'user@example.com' })
+await opensteer.input({ description: 'password', text: 'secret' })
+await opensteer.click({ description: 'sign in' })
+
+// Wait for redirect
+await opensteer.waitForText('Dashboard')
+
+const { url } = await opensteer.state()
+console.log(`Logged in, now at: ${url}`)
+```
+
+### Loading states
+
+```ts
+await opensteer.click({ description: 'refresh data' })
+
+// Wait for loading to finish
+await opensteer.waitForText('Last updated:')
+
+// Extract fresh data
+const stats = await opensteer.extract({
+  schema: {
+    revenue: 'string',
+    users: 'string'
+  }
+})
+```
+
+### Infinite scroll
+
+```ts
+let previousCount = 0
+
+while (true) {
+  // Scroll down
+  await opensteer.scroll({ direction: 'down' })
+  
+  try {
+    // Wait for "End of results" message
+    await opensteer.waitForText('No more items', { timeout: 3000 })
+    break
+  } catch {
+    // More items loaded, continue scrolling
+    await opensteer.page.waitForTimeout(500)
+  }
+}
+
+console.log('Reached end of list')
+```
+
+## Alternative wait strategies
+
+### Wait for navigation
+
+Use Playwright's page methods for navigation waits:
+
+```ts
+await opensteer.click({ description: 'logout' })
+
+// Wait for URL change
+await opensteer.page.waitForURL('**/login')
+
+console.log('Redirected to login page')
+```
+
+### Wait for network idle
+
+```ts
+await opensteer.goto('https://example.com', { 
+  waitUntil: 'networkidle' 
+})
+```
+
+### Wait for selector
+
+For waiting on specific elements by CSS selector:
+
+```ts
+await opensteer.page.waitForSelector('.success-message', {
+  state: 'visible'
+})
+```
+
+### Custom wait
+
+```ts
+// Wait for custom condition
+await opensteer.page.waitForFunction(() => {
+  return document.querySelectorAll('.item').length >= 10
+})
+```
+
+## Best practices
+
+<Tip>
+  OpenSteer actions have built-in waiting. Only add explicit waits when waiting for dynamic content that appears after an action completes.
+</Tip>
+
+<Info>
+  For text that appears immediately, `waitForText()` returns instantly. It only waits if the text isn't present yet.
+</Info>
+
+<Warning>
+  Avoid arbitrary timeouts like `page.waitForTimeout(3000)`. Use condition-based waits like `waitForText()` instead for more reliable scripts.
+</Warning>
+
+## Related methods
+
+- [goto()](/api/navigation) - Navigate with automatic stability waiting
+- [state()](/api/utilities/state) - Get current page state
+- [getElementText()](/api/utilities/element-info#getelementtext) - Read text from specific elements
+- [Actions](/api/actions/click) - All actions have built-in post-action waiting

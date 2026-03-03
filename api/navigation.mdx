@@ -73,32 +73,19 @@ try {
 }
 ```
 
-## `reload()`
+## Browser history navigation
 
-Reload the current page.
-
-```ts
-await opensteer.reload()
-```
-
-### Example
+For browser history operations like reload, back, and forward, use the Playwright `page` property:
 
 ```ts
-await opensteer.goto('https://example.com')
+// Reload the current page
+await opensteer.page.reload()
 
-// Modify page state
-await opensteer.click({ description: 'filter button' })
+// Go back in history
+await opensteer.page.goBack()
 
-// Reload to reset state
-await opensteer.reload()
-```
-
-## `goBack()`
-
-Navigate to the previous page in history.
-
-```ts
-await opensteer.goBack()
+// Go forward in history
+await opensteer.page.goForward()
 ```
 
 ### Example
@@ -107,33 +94,14 @@ await opensteer.goBack()
 await opensteer.goto('https://example.com')
 await opensteer.goto('https://example.com/about')
 
-// Go back to homepage
-await opensteer.goBack()
+// Navigate back
+await opensteer.page.goBack()
 
 const { url } = await opensteer.state()
 console.log(url) // https://example.com
-```
 
-## `goForward()`
-
-Navigate to the next page in history.
-
-```ts
-await opensteer.goForward()
-```
-
-### Example
-
-```ts
-await opensteer.goto('https://example.com')
-await opensteer.goto('https://example.com/about')
-await opensteer.goBack()
-
-// Go forward to /about again
-await opensteer.goForward()
-
-const { url } = await opensteer.state()
-console.log(url) // https://example.com/about
+// Navigate forward
+await opensteer.page.goForward()
 ```
 
 ## `waitForVisualStability()`
@@ -198,9 +166,9 @@ try {
     schema: { username: 'string' }
   })
   
-  // Go back and forward
-  await opensteer.goBack()
-  await opensteer.goForward()
+  // Use Playwright page for history navigation
+  await opensteer.page.goBack()
+  await opensteer.page.goForward()
   
 } finally {
   await opensteer.close()

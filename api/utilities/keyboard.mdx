@@ -1,0 +1,110 @@
+---
+title: Keyboard methods
+description: Type text and press keys programmatically
+icon: keyboard
+---
+
+## Overview
+
+OpenSteer provides methods for keyboard input beyond the standard `input()` method. These allow you to press individual keys and type text character-by-character.
+
+## Methods
+
+### `pressKey()`
+
+Press a keyboard key. Useful for special keys like Enter, Tab, Escape, arrow keys, etc.
+
+```ts
+await opensteer.pressKey(key: string): Promise<void>
+```
+
+<ParamField path="key" type="string" required>
+  The key to press. Can be a character or special key name like `'Enter'`, `'Tab'`, `'Escape'`, `'ArrowDown'`, etc.
+</ParamField>
+
+### Examples
+
+#### Press Enter key
+
+```ts
+await opensteer.pressKey('Enter')
+```
+
+#### Navigate with arrow keys
+
+```ts
+await opensteer.pressKey('ArrowDown')
+await opensteer.pressKey('ArrowDown')
+await opensteer.pressKey('Enter')
+```
+
+#### Press Escape to close dialog
+
+```ts
+await opensteer.pressKey('Escape')
+```
+
+#### Common special keys
+
+```ts
+await opensteer.pressKey('Tab')
+await opensteer.pressKey('Backspace')
+await opensteer.pressKey('Delete')
+await opensteer.pressKey('Home')
+await opensteer.pressKey('End')
+await opensteer.pressKey('PageUp')
+await opensteer.pressKey('PageDown')
+```
+
+## `type()`
+
+Type text character-by-character into the currently focused element. Unlike `input()`, this doesn't target a specific element.
+
+```ts
+await opensteer.type(text: string): Promise<void>
+```
+
+<ParamField path="text" type="string" required>
+  The text to type
+</ParamField>
+
+### Examples
+
+#### Type into focused element
+
+```ts
+// Focus an element first
+await opensteer.click({ description: 'search box' })
+
+// Then type
+await opensteer.type('OpenSteer browser automation')
+```
+
+#### Type and submit
+
+```ts
+await opensteer.click({ description: 'email input' })
+await opensteer.type('user@example.com')
+await opensteer.pressKey('Tab')
+await opensteer.type('password123')
+await opensteer.pressKey('Enter')
+```
+
+## Comparison: `type()` vs `input()`
+
+| Feature | `type()` | `input()` |
+|---------|----------|-----------|
+| Element targeting | Uses currently focused element | Targets specific element |
+| Clearing | Does not clear existing text | Clears by default (`clear: true`) |
+| Speed | Character-by-character (slower) | Direct value assignment (faster) |
+| Use case | Keyboard simulation, autocomplete | Form filling, replacing values |
+
+<Info>
+  Use `input()` for most form filling scenarios. Use `type()` when you need to simulate real keyboard input or trigger autocomplete/search suggestions.
+</Info>
+
+## Related methods
+
+- [input()](/api/actions/input) - Fill text into specific elements
+- [click()](/api/actions/click) - Click elements to focus them
+- [pressKey() on Playwright](https://playwright.dev/docs/api/class-keyboard#keyboard-press) - See Playwright docs for all supported key names

@@ -13,6 +13,105 @@ OpenSteer provides methods to export and import browser cookies. These methods a
 
 ## Methods
 
+### getCookies
+
+Get cookies from the browser context, optionally filtered by URL.
+
+```typescript
+await opensteer.getCookies(url?: string): Promise<Cookie[]>
+```
+
+<ParamField path="url" type="string">
+  Optional URL to filter cookies. If provided, only cookies for this URL will be returned
+</ParamField>
+
+<ResponseField name="Cookie[]" type="array">
+  Array of cookie objects from Playwright
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+
+// Get all cookies
+const allCookies = await opensteer.getCookies()
+console.log(`Total cookies: ${allCookies.length}`)
+
+// Get cookies for specific URL
+const siteCookies = await opensteer.getCookies('https://example.com')
+
+await opensteer.close()
+```
+
+### setCookie
+
+Set a single cookie in the browser context.
+
+```typescript
+await opensteer.setCookie(cookie: CookieParam): Promise<void>
+```
+
+<ParamField path="cookie" type="CookieParam" required>
+  Cookie object to set (see CookieParam type below)
+</ParamField>
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+// Set a cookie
+await opensteer.setCookie({
+  name: 'session_id',
+  value: 'abc123',
+  domain: 'example.com',
+  path: '/',
+  secure: true,
+  httpOnly: true
+})
+
+await opensteer.goto('https://example.com')
+
+await opensteer.close()
+```
+
+### clearCookies
+
+Clear all cookies in the browser context.
+
+```typescript
+await opensteer.clearCookies(): Promise<void>
+```
+
+#### Example
+
+```typescript
+import { Opensteer } from 'opensteer'
+
+const opensteer = new Opensteer()
+await opensteer.launch()
+
+await opensteer.goto('https://example.com')
+
+// Clear all cookies
+await opensteer.clearCookies()
+
+// Verify cookies are cleared
+const cookies = await opensteer.getCookies()
+console.log(`Cookies remaining: ${cookies.length}`) // 0
+
+await opensteer.close()
+```
+
 ### exportCookies
 
 Exports cookies from the browser context to a JSON file.

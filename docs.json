@@ -67,6 +67,7 @@
             "group": "Actions",
             "pages": [
               "api/actions/click",
+              "api/actions/dblclick-rightclick",
               "api/actions/input",
               "api/actions/hover",
               "api/actions/select",
@@ -102,7 +103,10 @@
             "pages": [
               "api/utilities/cookies",
               "api/utilities/tabs",
-              "api/utilities/state"
+              "api/utilities/state",
+              "api/utilities/keyboard",
+              "api/utilities/element-info",
+              "api/utilities/wait"
             ]
           }
         ]

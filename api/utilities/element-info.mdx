@@ -1,0 +1,263 @@
+---
+title: Element inspection
+description: Get information about elements on the page
+icon: magnifying-glass
+---
+
+## Overview
+
+OpenSteer provides methods to inspect elements and retrieve their properties, text content, values, attributes, and position.
+
+All methods accept `BaseActionOptions` for element targeting (description, element counter, or selector).
+
+## Methods
+
+### `getElementText()`
+
+Get the text content of an element.
+
+```ts
+await opensteer.getElementText(options: BaseActionOptions): Promise<string>
+```
+
+<ParamField path="options" type="BaseActionOptions" required>
+  Element targeting options (description, element, or selector)
+</ParamField>
+
+#### Example
+
+```ts
+const heading = await opensteer.getElementText({ 
+  description: 'main heading' 
+})
+console.log(heading) // "Welcome to OpenSteer"
+
+const title = await opensteer.getElementText({ 
+  element: 5 
+})
+console.log(title)
+```
+
+### `getElementValue()`
+
+Get the value of a form input element.
+
+```ts
+await opensteer.getElementValue(options: BaseActionOptions): Promise<string>
+```
+
+<ParamField path="options" type="BaseActionOptions" required>
+  Element targeting options (description, element, or selector)
+</ParamField>
+
+#### Example
+
+```ts
+// Fill an input
+await opensteer.input({ 
+  description: 'email field', 
+  text: 'user@example.com' 
+})
+
+// Read it back
+const email = await opensteer.getElementValue({ 
+  description: 'email field' 
+})
+console.log(email) // "user@example.com"
+
+// Check dropdown selection
+const country = await opensteer.getElementValue({ 
+  selector: '#country-select' 
+})
+console.log(country) // "US"
+```
+
+### `getElementAttributes()`
+
+Get all attributes of an element as a key-value map.
+
+```ts
+await opensteer.getElementAttributes(options: BaseActionOptions): Promise<Record<string, string>>
+```
+
+<ParamField path="options" type="BaseActionOptions" required>
+  Element targeting options (description, element, or selector)
+</ParamField>
+
+#### Example
+
+```ts
+const attrs = await opensteer.getElementAttributes({ 
+  element: 3 
+})
+
+console.log(attrs)
+// {
+//   "id": "submit-btn",
+//   "class": "btn btn-primary",
+//   "type": "submit",
+//   "disabled": "true"
+// }
+
+// Check specific attribute
+if (attrs.disabled === 'true') {
+  console.log('Button is disabled')
+}
+```
+
+### `getElementBoundingBox()`
+
+Get the position and size of an element.
+
+```ts
+await opensteer.getElementBoundingBox(options: BaseActionOptions): Promise<BoundingBox | null>
+```
+
+<ParamField path="options" type="BaseActionOptions" required>
+  Element targeting options (description, element, or selector)
+</ParamField>
+
+<ResponseField name="BoundingBox" type="object">
+  Element position and dimensions, or `null` if element is not visible
+  
+  <Expandable title="properties">
+    <ResponseField name="x" type="number">
+      X coordinate relative to viewport
+    </ResponseField>
+    
+    <ResponseField name="y" type="number">
+      Y coordinate relative to viewport
+    </ResponseField>
+    
+    <ResponseField name="width" type="number">
+      Element width in pixels
+    </ResponseField>
+    
+    <ResponseField name="height" type="number">
+      Element height in pixels
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example
+
+```ts
+const box = await opensteer.getElementBoundingBox({ 
+  description: 'modal dialog' 
+})
+
+if (box) {
+  console.log(`Modal position: (${box.x}, ${box.y})`)
+  console.log(`Modal size: ${box.width}x${box.height}`)
+  
+  // Check if element is in viewport
+  if (box.y < 0) {
+    console.log('Modal is above viewport')
+  }
+} else {
+  console.log('Modal is not visible')
+}
+```
+
+### `getHtml()`
+
+Get raw HTML of the page or a specific element.
+
+```ts
+await opensteer.getHtml(selector?: string): Promise<string>
+```
+
+<ParamField path="selector" type="string">
+  Optional CSS selector. If provided, returns HTML of that element. If omitted, returns full page HTML.
+</ParamField>
+
+<Info>
+  For cleaned HTML with element counters, use [`snapshot()`](/api/extraction/snapshot) instead.
+</Info>
+
+#### Example
+
+```ts
+// Get full page HTML
+const pageHtml = await opensteer.getHtml()
+console.log(pageHtml.substring(0, 100))
+
+// Get specific element HTML
+const navHtml = await opensteer.getHtml('nav.main-menu')
+console.log(navHtml)
+
+// Get inner HTML of container
+const contentHtml = await opensteer.getHtml('#content')
+```
+
+### `getTitle()`
+
+Get the page title.
+
+```ts
+await opensteer.getTitle(): Promise<string>
+```
+
+#### Example
+
+```ts
+await opensteer.goto('https://example.com')
+const title = await opensteer.getTitle()
+console.log(`Page title: ${title}`)
+
+// Compare with state() method
+const { title: stateTitle } = await opensteer.state()
+console.log(title === stateTitle) // true
+```
+
+## Common patterns
+
+### Verify form submission
+
+```ts
+await opensteer.input({ description: 'email', text: 'user@example.com' })
+await opensteer.click({ description: 'submit button' })
+
+// Wait and verify success message
+await opensteer.waitForText('Successfully submitted')
+const message = await opensteer.getElementText({ description: 'success message' })
+console.log(message)
+```
+
+### Check element state
+
+```ts
+const attrs = await opensteer.getElementAttributes({ 
+  description: 'submit button' 
+})
+
+if (attrs.disabled) {
+  console.log('Button is disabled, filling required fields')
+  await opensteer.input({ description: 'name', text: 'John Doe' })
+}
+```
+
+### Extract structured data
+
+For complex data extraction, prefer using [`extract()`](/api/extraction/extract) with schemas instead of these low-level methods.
+
+```ts
+// Instead of:
+const title = await opensteer.getElementText({ element: 1 })
+const price = await opensteer.getElementText({ element: 2 })
+
+// Use:
+const product = await opensteer.extract({
+  schema: {
+    title: 'string',
+    price: 'string'
+  }
+})
+```
+
+## Related methods
+
+- [extract()](/api/extraction/extract) - Extract structured data with schemas
+- [snapshot()](/api/extraction/snapshot) - Get cleaned HTML with element counters
+- [state()](/api/utilities/state) - Get URL, title, and HTML together
+- [waitForText()](/api/utilities/wait) - Wait for specific text to appear
